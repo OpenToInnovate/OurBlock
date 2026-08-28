@@ -1,0 +1,112 @@
+{
+  "snapshotDate": "2026-08-28",
+  "borough": "Tower Hamlets",
+  "gss": "E09000030",
+  "lpaEntity": 626199,
+  "ukhpi": {
+    "month": "2026-06",
+    "averagePrice": 456898,
+    "averagePriceFlatMaisonette": 439424,
+    "percentageAnnualChange": -13.1,
+    "percentageChange": 1.5,
+    "housePriceIndex": 88.3,
+    "source": "http://landregistry.data.gov.uk/data/ukhpi/region/tower-hamlets/month/2026-06.json",
+    "licence": "OGL v3.0",
+    "note": "Provisional June 2026 UK House Price Index. ONS local page rounds this to \u00a3457,000."
+  },
+  "pipr": {
+    "month": "2026-07",
+    "averageRent": 2439,
+    "annualChangePct": 3.0,
+    "monthlyChangePct": 0.44,
+    "oneBed": 1981,
+    "twoBed": 2404,
+    "threeBed": 2733,
+    "fourPlus": 3360,
+    "flatMaisonette": 2272,
+    "sourceWorkbook": "ONS Price Index of Private Rents UK monthly price statistics, 19 August 2026",
+    "bulletin": "https://www.ons.gov.uk/economy/inflationandpriceindices/bulletins/privaterentandhousepricesuk/august2026",
+    "localPage": "https://www.ons.gov.uk/visualisations/housingpriceslocal/E09000030/",
+    "licence": "OGL v3.0"
+  },
+  "affordableHousingSupply": {
+    "year": "2023-24",
+    "completions": 432,
+    "code": "E09000030",
+    "source": "https://data.london.gov.uk/download/e64g0/9d975263-dc3a-45c9-9236-dcc15d9e55d2/dclg-affordable-housing-borough.csv",
+    "licence": "OGL v3.0",
+    "note": "Win condition uses this completions pace, not the London Plan 35% policy target."
+  },
+  "tenure2018": {
+    "year": 2018,
+    "prsPct": 36.2,
+    "socialPct": 31.8,
+    "ownOutrightPct": 13.7,
+    "buyingWithMortgagePct": 18.2,
+    "households": 121200,
+    "source": "https://data.london.gov.uk/download/23gn1/f125e620-cc51-4fa1-bfb4-e15d3dd1c13c/tenure-households-borough.csv",
+    "note": "Series ends 2018. Labelled as 2018, not current tenure."
+  },
+  "nursePay": {
+    "year": "2026/27",
+    "band": 5,
+    "area": "Inner London",
+    "entryGross": 38488,
+    "midGross": 41511,
+    "topGross": 46852,
+    "basicEnglandEntry": 32073,
+    "basicEnglandTop": 39043,
+    "hcas": "Inner London 20% of basic, min \u00a35,794 max \u00a38,746 from 1 April 2026",
+    "source": "https://www.nhsemployers.org/articles/pay-scales-202627",
+    "usedInGame": "entryGross"
+  },
+  "takeHomeAssumptions": {
+    "personalAllowance": 12570,
+    "basicRate": 0.2,
+    "employeeNi": 0.08,
+    "niThreshold": 12570,
+    "nhsPensionEmployeePct": 0.098,
+    "note": "Transparent 2026/27 England PAYE sketch for the nurse only (NHS pension). Private renter has no pension deduction in this model. Not official tax tables."
+  },
+  "residents": {
+    "nurse": {
+      "label": "Band 5 nurse",
+      "gross": 38488,
+      "pensionPct": 0.098,
+      "housing": "houseshare at 42% of PIPR 1-bed (full 1-bed already exceeds 40% take-home at baseline)",
+      "rentShareOfOneBed": 0.42
+    },
+    "renter": {
+      "label": "Private renter",
+      "gross": 52000,
+      "pensionPct": 0,
+      "housing": "1-bed sitting tenancy at tenancyLag \u00d7 PIPR 1-bed",
+      "incomeNote": "Modelled inner-London professional salary for the scenario, not ASHE/median. Tenure mix (36.2% PRS) is 2018."
+    },
+    "family": {
+      "label": "Family of four",
+      "earners": 2,
+      "grossEach": 38488,
+      "pensionPct": 0.098,
+      "housing": "3-bed sitting tenancy at tenancyLag \u00d7 PIPR 3-bed",
+      "incomeNote": "Two Inner London Band 5 entry salaries as a visible public-service household, not a household-income survey."
+    }
+  },
+  "thresholds": {
+    "stressRentToTakeHome": 0.4,
+    "pricedOutRentToTakeHome": 0.55,
+    "tenancyLagStart": 0.78
+  },
+  "londonPlanAffordableTargetPct": 0.35,
+  "win": {
+    "affordableCompletions": 432,
+    "quarters": 8,
+    "loseSupport": 0,
+    "losePricedOutResidents": 2
+  },
+  "housingInLondon2025": {
+    "dataset": "https://data.london.gov.uk/dataset/housing-in-london-the-evidence-base-for-the-mayors-housing-strat-24rpx",
+    "used": false,
+    "note": "Page confirmed 2025 edition exists. No chart figures extracted; none used in the simulation."
+  }
+}
