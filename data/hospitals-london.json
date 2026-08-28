@@ -1,0 +1,143 @@
+{
+  "note": "Major NHS hospital sites via Nominatim/OSM. Distances are from these points, not A&E doors.",
+  "sites": [
+    {
+      "name": "Royal London Hospital",
+      "lat": 51.518688,
+      "lng": -0.0611327,
+      "osm": "Royal London Hospital, Whitechapel Road, St. George in the East, Whitechapel, London Borough of Tower Hamlets, Greater L"
+    },
+    {
+      "name": "Mile End Hospital",
+      "lat": 51.5250541,
+      "lng": -0.0422145,
+      "osm": "Mile End Hospital, 275, Bancroft Road, Globe Town, Stepney, London Borough of Tower Hamlets, Greater London, England, E1"
+    },
+    {
+      "name": "Whipps Cross University Hospital",
+      "lat": 51.5774862,
+      "lng": 0.0027666,
+      "osm": "Whipps Cross University Hospital, Whipps Cross Road, Whipps Cross, Upper Walthamstow, Leytonstone, London Borough of Wal"
+    },
+    {
+      "name": "Homerton University Hospital",
+      "lat": 51.5507996,
+      "lng": -0.0454798,
+      "osm": "Homerton University Hospital, Homerton Grove, Clapton Park, Homerton, London Borough of Hackney, Greater London, England"
+    },
+    {
+      "name": "Newham University Hospital",
+      "lat": 51.5216076,
+      "lng": 0.0389227,
+      "osm": "Newham University Hospital, Maybury Road, Custom House, Plaistow, London Borough of Newham, Greater London, England, E13"
+    },
+    {
+      "name": "Guy's Hospital",
+      "lat": 51.5032099,
+      "lng": -0.0867273,
+      "osm": "Guy's Hospital, Great Maze Pond, Borough Market, Bermondsey Village, The Borough, London Borough of Southwark, Greater L"
+    },
+    {
+      "name": "St Thomas' Hospital",
+      "lat": 51.4990645,
+      "lng": -0.1186968,
+      "osm": "St Thomas' Hospital, Westminster Bridge Road, South Bank, Waterloo, London Borough of Lambeth, Greater London, England, "
+    },
+    {
+      "name": "King's College Hospital",
+      "lat": 51.4681331,
+      "lng": -0.0936682,
+      "osm": "King's College Hospital, Denmark Hill, Camberwell, London Borough of Southwark, Greater London, England, SE5 9RS, United"
+    },
+    {
+      "name": "St George's Hospital",
+      "lat": 51.426433,
+      "lng": -0.175836,
+      "osm": "St George's Hospital, Blackshaw Road, Summerstown, London Borough of Wandsworth, Greater London, England, SW17 0QT, Unit"
+    },
+    {
+      "name": "University College Hospital",
+      "lat": 51.5248954,
+      "lng": -0.136505,
+      "osm": "University College Hospital, 235, Euston Road, Fitzrovia, London Borough of Camden, Greater London, England, NW1 2BU, Un"
+    },
+    {
+      "name": "Royal Free Hospital",
+      "lat": 51.5529389,
+      "lng": -0.1654964,
+      "osm": "Royal Free Hospital, Pond Street, South End Green, Belsize Park, London Borough of Camden, Greater London, England, NW3 "
+    },
+    {
+      "name": "Chelsea and Westminster Hospital",
+      "lat": 51.4843131,
+      "lng": -0.1813433,
+      "osm": "Chelsea and Westminster Hospital, 369, Fulham Road, World's End, Lot's Village, Brompton, Royal Borough of Kensington an"
+    },
+    {
+      "name": "Charing Cross Hospital",
+      "lat": 51.4872813,
+      "lng": -0.2180249,
+      "osm": "Charing Cross Hospital, Margravine Road, Hammersmith, London Borough of Hammersmith and Fulham, Greater London, England,"
+    },
+    {
+      "name": "Northwick Park Hospital",
+      "lat": 51.5751801,
+      "lng": -0.321528,
+      "osm": "Northwick Park Hospital, Watford Road, London Borough of Brent, Greater London, England, HA1 3UJ, United Kingdom"
+    },
+    {
+      "name": "Queen Elizabeth Hospital",
+      "lat": 51.4777046,
+      "lng": 0.0497901,
+      "osm": "Queen Elizabeth Hospital, Stadium Road, Charlton, Royal Borough of Greenwich, Greater London, England, SE18 4QH, United "
+    },
+    {
+      "name": "Croydon University Hospital",
+      "lat": 51.3900897,
+      "lng": -0.1103109,
+      "osm": "Croydon University Hospital, 530, London Road, Thornton Heath, London Borough of Croydon, Greater London, England, CR7 7"
+    },
+    {
+      "name": "Kingston Hospital",
+      "lat": 51.4149844,
+      "lng": -0.2825102,
+      "osm": "Kingston Hospital, Galsworthy Road, Norbiton, Kingston upon Thames, Greater London, England, KT2 7QB, United Kingdom"
+    },
+    {
+      "name": "West Middlesex University Hospital",
+      "lat": 51.4735623,
+      "lng": -0.3245881,
+      "osm": "West Middlesex University Hospital, Hepple Close, Spring Grove, London Borough of Hounslow, Greater London, England, TW7"
+    },
+    {
+      "name": "Ealing Hospital",
+      "lat": 51.5085989,
+      "lng": -0.3459515,
+      "osm": "Ealing Hospital, Uxbridge Road, Hanwell, London Borough of Ealing, Greater London, England, UB1 3ET, United Kingdom"
+    },
+    {
+      "name": "Hillingdon Hospital",
+      "lat": 51.52546,
+      "lng": -0.4615173,
+      "osm": "Hillingdon Hospital, Pield Heath Road, Hillingdon, London Borough of Hillingdon, Greater London, England, UB8 3NN, Unite"
+    },
+    {
+      "name": "North Middlesex University Hospital",
+      "lat": 51.6127559,
+      "lng": -0.0736167,
+      "osm": "North Middlesex University Hospital, Bull Lane, Upper Edmonton, Edmonton, London Borough of Enfield, Greater London, Eng"
+    },
+    {
+      "name": "Barnet Hospital",
+      "lat": 51.6507787,
+      "lng": -0.2142332,
+      "osm": "Barnet Hospital, Wellhouse Lane, High Barnet, Chipping Barnet, Greater London, England, EN5 3DJ, United Kingdom"
+    },
+    {
+      "name": "Princess Royal University Hospital",
+      "lat": 51.3661619,
+      "lng": 0.0587065,
+      "osm": "Princess Royal University Hospital, Farnborough Common, Farnborough Park, Locksbottom, London Borough of Bromley, Greate"
+    }
+  ]
+}
