@@ -1,0 +1,14 @@
+[
+  {
+    "name": "Royal London Hospital",
+    "lat": 51.5175027,
+    "lng": -0.0598851,
+    "note": "Whitechapel Road, Whitechapel. Nominatim/OSM way 640495338 (28 Aug 2026). Given pin 51.51745,-0.05993 (E1 1FR) matches this centroid to ~7 m. Barts Health NHS Trust."
+  },
+  {
+    "name": "Mile End Hospital",
+    "lat": 51.5250541,
+    "lng": -0.0422145,
+    "note": "275 Bancroft Road, Stepney, E1 4DG. Confirmed via Nominatim/OSM way 184154674 (28 Aug 2026), not an approximate pin. Barts Health community/specialist hospital."
+  }
+]

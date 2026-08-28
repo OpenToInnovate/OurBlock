@@ -1,0 +1,12 @@
+import fs from "node:fs";
+const cons = JSON.parse(fs.readFileSync("data/tower-hamlets-constraints.geojson", "utf8"));
+console.log("constraints", cons.type, cons.counts, cons.features.length);
+const b = JSON.parse(fs.readFileSync("data/london-boroughs.geojson", "utf8"));
+console.log("boroughs", b.features.length);
+const a = JSON.parse(fs.readFileSync("data/tower-hamlets-applications.json", "utf8"));
+console.log("apps", a.count, "playable", a.playableCount);
+const u = JSON.parse(fs.readFileSync("data/ukhpi-tower-hamlets.json", "utf8"));
+const t = u.result.primaryTopic;
+console.log("ukhpi", t.averagePrice, t.refMonth, t.percentageAnnualChange);
+const base = JSON.parse(fs.readFileSync("data/affordability-baseline.json", "utf8"));
+console.log("thresholds", base.thresholds);
