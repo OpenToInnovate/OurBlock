@@ -1,0 +1,79 @@
+{
+  "format": "linked-data-api",
+  "version": "0.2",
+  "result": {
+    "_about": "http://landregistry.data.gov.uk/data/ukhpi/region/tower-hamlets/month/2026-06.json",
+    "definition": "http://landregistry.data.gov.uk/meta/data/ukhpi/region/_regionName/month/_month.json",
+    "extendedMetadataVersion": "http://landregistry.data.gov.uk/data/ukhpi/region/tower-hamlets/month/2026-06.json?_metadata=all",
+    "primaryTopic": {
+      "_about": "http://landregistry.data.gov.uk/data/ukhpi/region/tower-hamlets/month/2026-06",
+      "averagePrice": 456898,
+      "averagePriceCash": 475014,
+      "averagePriceDetached": 893866,
+      "averagePriceFirstTimeBuyer": 436114,
+      "averagePriceFlatMaisonette": 439424,
+      "averagePriceFormerOwnerOccupier": 525675,
+      "averagePriceMortgage": 451417,
+      "averagePriceSemiDetached": 673174,
+      "averagePriceTerraced": 695459,
+      "dataSet": "http://landregistry.data.gov.uk/data/ukhpi/dataset",
+      "housePriceIndex": 88.3,
+      "housePriceIndexCash": 89.2,
+      "housePriceIndexDetached": 90.4,
+      "housePriceIndexFirstTimeBuyer": 88,
+      "housePriceIndexFlatMaisonette": 88,
+      "housePriceIndexFormerOwnerOccupier": 89.3,
+      "housePriceIndexMortgage": 88.1,
+      "housePriceIndexSemiDetached": 91,
+      "housePriceIndexTerraced": 91.8,
+      "percentageAnnualChange": -13.1,
+      "percentageAnnualChangeCash": -12.7,
+      "percentageAnnualChangeDetached": -13.9,
+      "percentageAnnualChangeFirstTimeBuyer": -13.3,
+      "percentageAnnualChangeFlatMaisonette": -13.2,
+      "percentageAnnualChangeFormerOwnerOccupier": -12.6,
+      "percentageAnnualChangeMortgage": -13.2,
+      "percentageAnnualChangeSemiDetached": -11.5,
+      "percentageAnnualChangeTerraced": -11,
+      "percentageChange": 1.5,
+      "percentageChangeCash": 1.6,
+      "percentageChangeDetached": 0.6,
+      "percentageChangeFirstTimeBuyer": 1.4,
+      "percentageChangeFlatMaisonette": 1.5,
+      "percentageChangeFormerOwnerOccupier": 1.5,
+      "percentageChangeMortgage": 1.4,
+      "percentageChangeSemiDetached": 1,
+      "percentageChangeTerraced": 0.9,
+      "refMonth": "2026-06",
+      "refPeriodDuration": 1,
+      "refPeriodStart": "Mon, 01 Jun 2026",
+      "refRegion": {
+        "_about": "http://landregistry.data.gov.uk/id/region/tower-hamlets",
+        "label": [
+          {
+            "_value": "Tower Hamlets",
+            "_datatype": "langString",
+            "_lang": "en"
+          }
+        ]
+      },
+      "type": [
+        {
+          "_about": "http://landregistry.data.gov.uk/def/ukhpi/MonthlyIndicesByRegion",
+          "label": [
+            {
+              "_value": "UK house price indices",
+              "_datatype": "langString",
+              "_lang": "en"
+            }
+          ]
+        },
+        "http://purl.org/linked-data/cube#Observation"
+      ]
+    },
+    "type": [
+      "http://purl.org/linked-data/api/vocab#ItemEndpoint",
+      "http://purl.org/linked-data/api/vocab#Page"
+    ]
+  }
+}
