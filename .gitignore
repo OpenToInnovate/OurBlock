@@ -1,0 +1,4 @@
+node_modules/
+.venv/
+data/pipr-source.xlsx
+.DS_Store
