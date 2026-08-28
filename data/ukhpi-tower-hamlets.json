@@ -1,0 +1,15 @@
+{
+  "format": "linked-data-api",
+  "version": "0.2",
+  "result": {
+    "_about": "http://landregistry.data.gov.uk/data/ukhpi/region/tower-hamlets/month/2026-06.json",
+    "primaryTopic": {
+      "averagePrice": 456898,
+      "averagePriceFlatMaisonette": 439424,
+      "percentageAnnualChange": -13.1,
+      "percentageChange": 1.5,
+      "housePriceIndex": 88.3,
+      "refMonth": "2026-06"
+    }
+  }
+}
