@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#c4b896" />
+    <title>Planning Desk · London</title>
+    <meta
+      name="description"
+      content="Sit a London planning term. Fly home with your postcode. Eight real applications."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="preconnect" href="https://unpkg.com" />
+    <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin />
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css" />
+    <link rel="stylesheet" href="./css/desk.css?v=desk4" />
+  </head>
+  <body>
+    <div id="desk">
+      <header id="chrome"></header>
+      <div id="homebar">
+        <label class="home-label">Borough
+          <select id="borough-pick" aria-label="London borough"></select>
+        </label>
+        <form id="postcode-form">
+          <label class="home-label">Your postcode
+            <input id="postcode" name="postcode" type="text" inputmode="text" autocomplete="postal-code" placeholder="E1 4LJ" spellcheck="false" />
+          </label>
+          <button type="submit" class="home-go">Go home</button>
+        </form>
+        <p class="home-hint" id="home-hint">Pick a borough to sit that committee. Postcode flies you home on the same desk.</p>
+      </div>
+      <section id="map-wrap" class="is-2d">
+        <div id="gl-map" class="gl-map" role="application" aria-label="London, Earth-style 3D map"></div>
+        <svg id="map" role="img" aria-label="Greater London boroughs, with planning applications"></svg>
+        <p id="massing-note" class="massing-note" hidden>indicative massing, not a real elevation</p>
+        <div class="layers" role="group" aria-label="Map layers">
+          <button type="button" class="layer-pill on" data-layer="conservation" aria-pressed="true"><span class="dot ca"></span>CA</button>
+          <button type="button" class="layer-pill on" data-layer="listed" aria-pressed="true"><span class="dot listed"></span>Listed</button>
+          <button type="button" class="layer-pill on" data-layer="article4" aria-pressed="true"><span class="dot a4"></span>A4</button>
+          <button type="button" class="layer-pill on" data-layer="brownfield" aria-pressed="true"><span class="dot bf"></span>Brown</button>
+          <button type="button" class="layer-pill on" data-layer="apps" aria-pressed="true"><span class="dot apps"></span>Apps</button>
+        </div>
+        <button type="button" id="reset-view" class="mute reset-view" title="Reset camera to the current site">Reset view</button>
+        <aside id="street-card" class="street-card" hidden></aside>
+        <p id="cam-hint" class="cam-hint">drag to look · scroll to zoom · right-drag to orbit</p>
+        <button type="button" id="view-mode" class="mute view-mode" aria-pressed="false" title="Toggle 2D SVG or 3D Earth view">2D</button>
+        <button type="button" id="mute" class="mute" aria-pressed="false" title="Mute decision click">Sound</button>
+      </section>
+      <aside id="side">
+        <section id="case" aria-label="Current application">
+          <details class="case-fold" open>
+            <summary class="fold-sum"><span class="fold-kicker">Stamp</span> <span id="case-sum-text">Case</span></summary>
+            <div id="case-body"></div>
+            <div id="actions">
+              <div class="action-row">
+                <button type="button" class="btn approve" data-decision="approve" accesskey="a">
+                  <kbd>A</kbd>
+                  <span class="btn-copy"><span class="btn-name">Approve</span><span class="btn-pred" data-pred="approve"></span></span>
+                </button>
+                <button type="button" class="btn refuse" data-decision="refuse" accesskey="r">
+                  <kbd>R</kbd>
+                  <span class="btn-copy"><span class="btn-name">Refuse</span><span class="btn-pred" data-pred="refuse"></span></span>
+                </button>
+                <button type="button" class="btn negotiate" data-decision="negotiate" accesskey="n">
+                  <kbd>N</kbd>
+                  <span class="btn-copy"><span class="btn-name">Negotiate</span><span class="btn-pred" data-pred="negotiate"></span></span>
+                </button>
+              </div>
+              <div class="action-meta">
+                <p class="pred" id="pred">35% is policy · 432 is the win</p>
+              </div>
+            </div>
+          </details>
+        </section>
+        <section id="residents" aria-label="Residents"></section>
+        <section id="meters" aria-label="How this works"></section>
+        <section id="log" aria-label="Last decision"></section>
+      </aside>
+      <div id="toast" hidden role="status" aria-live="polite"></div>
+      <footer class="site">
+        Snapshot 28 Aug 2026 · ONS / OS · MHCLG planning.data.gov.uk · GLA PLD · UKHPI · PIPR · OSM/OpenFreeMap · data.police.uk · GIAS · OGL.
+        3D buildings are OpenStreetMap; SimCity-style landmark massing is original low-poly, not photogrammetry. Proposed massing is indicative from parsed unit counts, not a planning drawing.
+        TA change is a labelled scenario, not a forecast. police.uk locations are approximate (street-anonymised). School 400m halo is not a legal catchment. Hospital distances are from named sites (Royal London, Mile End).
+        Not an official LBTH or GLA product.
+        <a href="./DATA.md">DATA.md</a>
+      </footer>
+    </div>
+    <div id="table" class="table-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="table-title">
+      <div class="table-sheet">
+        <header class="table-head">
+          <div class="table-brand">
+            <p class="table-kicker">The table · s106</p>
+            <h2 id="table-title" class="table-ref">—</h2>
+          </div>
+          <div class="table-timer" id="table-timer">
+            <span class="table-ring" id="table-ring" aria-hidden="true"></span>
+            <span class="table-secs" id="table-secs">15</span>
+          </div>
+        </header>
+        <p class="table-cost" id="table-cost">Build cost <b class="cost-now">+0%</b> <span class="cost-trail">+0% → +3% → +6% → +9%</span> · labelled scenario. They will cry viability.</p>
+        <p class="table-warn" id="table-warn" hidden>They'll try to cut affordable to stay viable.</p>
+        <p class="table-edu" id="table-edu"></p>
+        <p class="table-minor" id="table-minor" hidden></p>
+        <div class="table-cards" role="listbox" aria-label="Deal cards">
+          <button type="button" class="table-card on" data-deal="policy35" aria-selected="true">
+            <span class="table-card-kicker">1 · London Plan</span>
+            <strong class="table-card-name">Policy 35%</strong>
+            <span class="table-card-copy">Take 35% and sign. Real policy, not a favour.</span>
+            <span class="table-card-live" data-live="policy35"></span>
+          </button>
+          <button type="button" class="table-card" data-deal="squeeze50" aria-selected="false">
+            <span class="table-card-kicker">2 · GLA-style</span>
+            <strong class="table-card-name">Squeeze 50%</strong>
+            <span class="table-card-copy">50% is what public land is supposed to do. They'll fight.</span>
+            <span class="table-card-live" data-live="squeeze50"></span>
+          </button>
+          <button type="button" class="table-card" data-deal="smaller" aria-selected="false">
+            <span class="table-card-kicker">3 · Heritage</span>
+            <strong class="table-card-name">Smaller building</strong>
+            <span class="table-card-copy">Lose a floor, keep the neighbours, maybe keep 35%.</span>
+            <span class="table-card-live" data-live="smaller"></span>
+          </button>
+        </div>
+        <div class="table-bar">
+          <button type="button" class="btn table-shake" id="table-shake">Shake on deal</button>
+          <button type="button" class="btn table-walk" id="table-walk">Walks</button>
+        </div>
+        <p class="table-walk-hint">Developer walks. They can appeal. The 3,096 get 0 this quarter.</p>
+      </div>
+    </div>
+    <div id="end" hidden></div>
+    <p id="boot-status">Loading the desk…</p>
+    <script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
+    <script type="module" src="./src/main.js?v=desk4"></script>
+  </body>
+</html>
