@@ -1,0 +1,269 @@
+{
+  "note": "Greater London local authorities (ONS LAD). playable means a slim 8-stamp pack exists at data/packs/{slug}.json and is loaded on borough switch. City of London has no ONS PIPR row so it stays camera-only. Packs are snapshots, not live.",
+  "boroughs": [
+    {
+      "name": "Barking and Dagenham",
+      "slug": "barking-and-dagenham",
+      "lad": "E09000002",
+      "lon": 0.13086,
+      "lat": 51.5346,
+      "playable": true
+    },
+    {
+      "name": "Barnet",
+      "slug": "barnet",
+      "lad": "E09000003",
+      "lon": -0.19933,
+      "lat": 51.62213,
+      "playable": true
+    },
+    {
+      "name": "Bexley",
+      "slug": "bexley",
+      "lad": "E09000004",
+      "lon": 0.15483,
+      "lat": 51.47638,
+      "playable": true
+    },
+    {
+      "name": "Brent",
+      "slug": "brent",
+      "lad": "E09000005",
+      "lon": -0.26157,
+      "lat": 51.55647,
+      "playable": true
+    },
+    {
+      "name": "Bromley",
+      "slug": "bromley",
+      "lad": "E09000006",
+      "lon": 0.04202,
+      "lat": 51.38141,
+      "playable": true
+    },
+    {
+      "name": "Camden",
+      "slug": "camden",
+      "lad": "E09000007",
+      "lon": -0.14824,
+      "lat": 51.54177,
+      "playable": true
+    },
+    {
+      "name": "City of London",
+      "slug": "city-of-london",
+      "lad": "E09000001",
+      "lon": -0.09396,
+      "lat": 51.51132,
+      "playable": false
+    },
+    {
+      "name": "Croydon",
+      "slug": "croydon",
+      "lad": "E09000008",
+      "lon": -0.09372,
+      "lat": 51.3566,
+      "playable": true
+    },
+    {
+      "name": "Ealing",
+      "slug": "ealing",
+      "lad": "E09000009",
+      "lon": -0.32571,
+      "lat": 51.52321,
+      "playable": true
+    },
+    {
+      "name": "Enfield",
+      "slug": "enfield",
+      "lad": "E09000010",
+      "lon": -0.1068,
+      "lat": 51.65322,
+      "playable": true
+    },
+    {
+      "name": "Greenwich",
+      "slug": "greenwich",
+      "lad": "E09000011",
+      "lon": 0.02598,
+      "lat": 51.486,
+      "playable": true
+    },
+    {
+      "name": "Hackney",
+      "slug": "hackney",
+      "lad": "E09000012",
+      "lon": -0.06073,
+      "lat": 51.54958,
+      "playable": true
+    },
+    {
+      "name": "Hammersmith and Fulham",
+      "slug": "hammersmith-and-fulham",
+      "lad": "E09000013",
+      "lon": -0.21699,
+      "lat": 51.48613,
+      "playable": true
+    },
+    {
+      "name": "Haringey",
+      "slug": "haringey",
+      "lad": "E09000014",
+      "lon": -0.11524,
+      "lat": 51.58697,
+      "playable": true
+    },
+    {
+      "name": "Harrow",
+      "slug": "harrow",
+      "lad": "E09000015",
+      "lon": -0.32301,
+      "lat": 51.59815,
+      "playable": true
+    },
+    {
+      "name": "Havering",
+      "slug": "havering",
+      "lad": "E09000016",
+      "lon": 0.21772,
+      "lat": 51.54414,
+      "playable": true
+    },
+    {
+      "name": "Hillingdon",
+      "slug": "hillingdon",
+      "lad": "E09000017",
+      "lon": -0.44112,
+      "lat": 51.53977,
+      "playable": true
+    },
+    {
+      "name": "Hounslow",
+      "slug": "hounslow",
+      "lad": "E09000018",
+      "lon": -0.30406,
+      "lat": 51.47858,
+      "playable": true
+    },
+    {
+      "name": "Islington",
+      "slug": "islington",
+      "lad": "E09000019",
+      "lon": -0.10637,
+      "lat": 51.54718,
+      "playable": true
+    },
+    {
+      "name": "Kensington and Chelsea",
+      "slug": "kensington-and-chelsea",
+      "lad": "E09000020",
+      "lon": -0.17658,
+      "lat": 51.49285,
+      "playable": true
+    },
+    {
+      "name": "Kingston upon Thames",
+      "slug": "kingston-upon-thames",
+      "lad": "E09000021",
+      "lon": -0.28622,
+      "lat": 51.39258,
+      "playable": true
+    },
+    {
+      "name": "Lambeth",
+      "slug": "lambeth",
+      "lad": "E09000022",
+      "lon": -0.11819,
+      "lat": 51.46119,
+      "playable": true
+    },
+    {
+      "name": "Lewisham",
+      "slug": "lewisham",
+      "lad": "E09000023",
+      "lon": -0.01776,
+      "lat": 51.46066,
+      "playable": true
+    },
+    {
+      "name": "Merton",
+      "slug": "merton",
+      "lad": "E09000024",
+      "lon": -0.1756,
+      "lat": 51.40503,
+      "playable": true
+    },
+    {
+      "name": "Newham",
+      "slug": "newham",
+      "lad": "E09000025",
+      "lon": 0.0504,
+      "lat": 51.51893,
+      "playable": true
+    },
+    {
+      "name": "Redbridge",
+      "slug": "redbridge",
+      "lad": "E09000026",
+      "lon": 0.07608,
+      "lat": 51.58652,
+      "playable": true
+    },
+    {
+      "name": "Richmond upon Thames",
+      "slug": "richmond-upon-thames",
+      "lad": "E09000027",
+      "lon": -0.28988,
+      "lat": 51.45764,
+      "playable": true
+    },
+    {
+      "name": "Southwark",
+      "slug": "southwark",
+      "lad": "E09000028",
+      "lon": -0.06681,
+      "lat": 51.49071,
+      "playable": true
+    },
+    {
+      "name": "Sutton",
+      "slug": "sutton",
+      "lad": "E09000029",
+      "lon": -0.18982,
+      "lat": 51.36297,
+      "playable": true
+    },
+    {
+      "name": "Tower Hamlets",
+      "slug": "tower-hamlets",
+      "lad": "E09000030",
+      "lon": -0.03043,
+      "lat": 51.50646,
+      "playable": true
+    },
+    {
+      "name": "Waltham Forest",
+      "slug": "waltham-forest",
+      "lad": "E09000031",
+      "lon": -0.00603,
+      "lat": 51.59872,
+      "playable": true
+    },
+    {
+      "name": "Wandsworth",
+      "slug": "wandsworth",
+      "lad": "E09000032",
+      "lon": -0.18627,
+      "lat": 51.46581,
+      "playable": true
+    },
+    {
+      "name": "Westminster",
+      "slug": "westminster",
+      "lad": "E09000033",
+      "lon": -0.14374,
+      "lat": 51.50679,
+      "playable": false
+    }
+  ]
+}
