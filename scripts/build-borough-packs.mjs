@@ -293,3 +293,60 @@ async function fetchApps(lpaName) {
   }
   return { total, apps };
 }
+
+function pickEight(playable) {
+  const sorted = [...playable].sort((a, b) => (b.game.units || 0) - (a.game.units || 0));
+  const byWard = new Map();
+  for (const a of sorted) {
+    const w = a.ward || "_";
+    if (!byWard.has(w)) byWard.set(w, []);
+    byWard.get(w).push(a);
+  }
+  const deck = [];
+  const used = new Set();
+  for (const list of byWard.values()) {
+    if (deck.length >= 8) break;
+    deck.push(list[0]);
+    used.add(list[0].id);
+  }
+  for (const a of sorted) {
+    if (deck.length >= 8) break;
+    if (used.has(a.id)) continue;
+    deck.push(a);
+    used.add(a.id);
+  }
+  return deck;
+}
+
+function nearestHospital(lat, lon, hospitals) {
+  let best = null;
+  for (const h of hospitals) {
+    const m = haversineM(lat, lon, h.lat, h.lng);
+    if (!best || m < best.m) best = { name: h.name, m: Math.round(m), lat: h.lat, lng: h.lng };
+  }
+  return best;
+}
+
+function hospBand(m) {
+  if (m == null) return { hospitalBand: "unknown", hospitalSweet: false, hospitalTooClose: false, hospitalFar: false };
+  if (m < 250) return { hospitalBand: "too-close", hospitalSweet: false, hospitalTooClose: true, hospitalFar: false };
+  if (m >= 400 && m <= 1200) return { hospitalBand: "sweet", hospitalSweet: true, hospitalTooClose: false, hospitalFar: false };
+  if (m > 2000) return { hospitalBand: "far", hospitalSweet: false, hospitalTooClose: false, hospitalFar: true };
+  return { hospitalBand: "ok", hospitalSweet: false, hospitalTooClose: false, hospitalFar: false };
+}
+
+async function crimeAt(lat, lon) {
+  const url = `https://data.police.uk/api/crimes-street/all-crime?lat=${lat}&lng=${lon}&date=${CRIME_MONTH}`;
+  const res = await fetch(url, { headers: { Accept: "application/json", "User-Agent": "planning-desk/1.0" } });
+  if (!res.ok) return { crimeCount: null, crimeLocs: null, crimeMonth: CRIME_MONTH, highCrime: false };
+  const rows = await res.json();
+  const locs = new Set();
+  for (const r of rows) {
+    const la = r.location?.latitude;
+    const lo = r.location?.longitude;
+    if (la && lo) locs.add(`${Number(la).toFixed(5)},${Number(lo).toFixed(5)}`);
+  }
+  const crimeCount = rows.length;
+  const crimeLocs = locs.size;
+  return { crimeCount, crimeLocs, crimeMonth: CRIME_MONTH, highCrime: crimeCount >= 60 };
+}
