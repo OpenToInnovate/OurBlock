@@ -1,14 +1,14 @@
 /** Our Block stacker. Crane at the top of the viewport. Pieces are storeys. */
 
-import { challengeSpec, floorKind } from "./talk.js?v=ob7";
-import { maxSocial } from "./progress.js?v=ob7";
+import { challengeSpec, floorKind, isLowSocial } from "./talk.js?v=ob9";
+import { maxSocial } from "./progress.js?v=ob8";
 import {
   BLOCK_H,
   drawStorey,
   drawPlinth,
   drawHook,
   drawDebris,
-} from "./stack-draw.js?v=ob7";
+} from "./stack-draw.js?v=ob8";
 import {
   playCheer,
   playLose,
@@ -19,7 +19,7 @@ import {
   spawnBurst,
   updateParticles,
   drawParticles,
-} from "./stack-fx.js?v=ob7";
+} from "./stack-fx.js?v=ob8";
 
 const HOOK_Y = 22;
 const CABLE = 44;
@@ -87,6 +87,7 @@ export function createStacker(canvas, app, onDone) {
   let winShown = 0;
   let skipWin = false;
   let endSent = false;
+  let endWon = false;
 
   function viewportSize() {
     const host = canvas.parentElement || canvas;
@@ -147,6 +148,7 @@ export function createStacker(canvas, app, onDone) {
     return {
       social,
       won,
+      civicLose: isLowSocial(app, spec),
       floors: stacked.length,
       spec,
       rubble: rubblePx,
@@ -175,14 +177,20 @@ export function createStacker(canvas, app, onDone) {
   function finish(won) {
     if (over) return;
     over = true;
-    phase = won ? "win" : "lose";
-    flash = won ? "STACKED" : "Missed the stack.";
-    flashT = won ? 3 : 1.1;
-    if (won) startWinFx();
-    else {
-      playLose();
-      setTimeout(() => sendDone(false), 720);
+    const civic = isLowSocial(app, spec);
+    if (won && !civic) {
+      phase = "win";
+      flash = "STACKED";
+      flashT = 3;
+      startWinFx();
+      return;
     }
+    endWon = won;
+    phase = "civic";
+    flash = won ? "You won. Our Block lost." : "You Failed.";
+    flashT = 0;
+    if (!won) playLose();
+    setTimeout(() => sendDone(won), won ? 820 : 420);
   }
 
   function resetShake() {
@@ -470,7 +478,10 @@ export function createStacker(canvas, app, onDone) {
       ctx.shadowBlur = 0;
     }
     if (phase === "win") drawWin(dt);
-    else if (phase === "lose") drawLose();
+    else if (phase === "civic") {
+      ctx.fillStyle = "rgba(8, 16, 12, 0.35)";
+      ctx.fillRect(0, 0, W, H);
+    } else if (phase === "lose") drawLose();
   }
 
   function frame(now) {
@@ -484,6 +495,10 @@ export function createStacker(canvas, app, onDone) {
   function tryDrop() {
     if (phase === "win") {
       skipWin = true;
+      return;
+    }
+    if (phase === "civic") {
+      sendDone(endWon);
       return;
     }
     if (!armed || over || phase !== "swing" || !drop) return;
@@ -524,13 +539,18 @@ export function createStacker(canvas, app, onDone) {
       if (kind === "social") social += spec.homesPerLime || 1;
     }
     over = false;
-    phase = stacked.length >= spec.floors ? "win" : "swing";
+    const full = stacked.length >= spec.floors;
+    const civic = full && isLowSocial(app, spec);
+    phase = civic ? "civic" : full ? "win" : "swing";
     drop = phase === "swing" ? makeBlock() : null;
     const topY = stacked.length ? stacked[stacked.length - 1].y : plinthTop(H);
     cam = H * 0.42 - topY;
     if (phase === "win") {
       over = true;
       startWinFx();
+    } else if (phase === "civic") {
+      over = true;
+      setTimeout(() => sendDone(true), 360);
     }
     paintHud();
   }
@@ -572,6 +592,7 @@ export function createStacker(canvas, app, onDone) {
     running = true;
     over = false;
     endSent = false;
+    endWon = false;
     hp = 3;
     social = 0;
     combo = 0;
@@ -624,6 +645,7 @@ export function createStacker(canvas, app, onDone) {
       floors: stacked.length,
       cam,
       over,
+      civicLose: isLowSocial(app, spec),
       kind: drop?.kind,
       lastW: stacked.length ? stacked[stacked.length - 1].w : 0,
       dropW: drop?.w ?? 0,
