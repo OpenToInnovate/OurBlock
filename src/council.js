@@ -11,10 +11,10 @@ import {
   civicLoseLine,
   civicFailRetryLine,
   civicWinLine,
-} from "./talk.js?v=ob12";
-import { createStacker } from "./stacker.js?v=ob12";
+} from "./talk.js?v=ob14";
+import { createStacker } from "./stacker.js?v=ob14";
 import { loadProgress, saveChallenge, challengeId, recordOf } from "./progress.js?v=ob8";
-import { unlockAudio } from "./stack-fx.js?v=ob8";
+import { unlockAudio } from "./stack-fx.js?v=ob14";
 
 const LONDON = { lng: -0.1, lat: 51.51, zoom: 11.15, pitch: 0, bearing: -12 };
 
@@ -32,6 +32,7 @@ let stackWanderTimer = 0;
 let civicBundle = null;
 let civicIgnoreUntil = 0;
 let talkIgnoreUntil = 0;
+let stackPtrDown = false;
 
 function $(id) {
   return document.getElementById(id);
@@ -97,7 +98,7 @@ function setMode(next, globe) {
   wrap?.classList.toggle("is-walk", next === "walk" || next === "talk" || next === "civic");
   wrap?.classList.toggle("is-stack", next === "stack");
   $("landing").hidden = next !== "landing";
-  $("walk-hud").hidden = next === "landing" || next === "stack";
+  $("walk-hud").hidden = next === "landing" || next === "stack" || next === "civic";
   $("talk").hidden = next !== "talk";
   $("stack").hidden = next !== "stack";
   $("civic").hidden = next !== "civic";
@@ -297,6 +298,7 @@ function showCivic(app, globe, opts = {}) {
 
   if (!won) {
     if (drop) {
+      drop.hidden = false;
       drop.textContent = "You Failed.";
       restartDrop(drop);
     }
@@ -317,7 +319,7 @@ function showCivic(app, globe, opts = {}) {
       title.hidden = false;
     } else {
       title.textContent = "You Failed.";
-      title.hidden = true;
+      title.hidden = false;
     }
   }
 
@@ -335,7 +337,7 @@ function showCivic(app, globe, opts = {}) {
     st.textContent = "";
   }
   paintScore();
-  civicIgnoreUntil = performance.now() + 500;
+  civicIgnoreUntil = performance.now() + 900;
   setMode("civic", globe);
 }
 
@@ -462,8 +464,18 @@ export function boot(root, data) {
     if (performance.now() < talkIgnoreUntil) return;
     setMode("walk", globe);
   });
+  document.addEventListener("pointerdown", (ev) => {
+    stackPtrDown = !!(ev.target && ev.target.closest && ev.target.closest("#stack"));
+  }, true);
+  $("civic")?.addEventListener("pointerup", (ev) => {
+    if (stackPtrDown) {
+      ev.preventDefault();
+      ev.stopPropagation();
+    }
+  }, true);
   $("civic")?.addEventListener("click", (ev) => {
     if (ev.target.closest(".civic-card")) return;
+    if (stackPtrDown) return;
     if (performance.now() < civicIgnoreUntil) return;
     setMode("walk", globe);
     globe.overview?.();
