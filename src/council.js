@@ -1,6 +1,6 @@
 /** Our Block boot: landing → walk pins → talk → stacker. Desk stays dead. */
 
-import { createGlobe } from "./globe.js?v=ob19";
+import { createGlobe } from "./globe.js?v=ob24";
 import {
   talkLines,
   challengeSpec,
@@ -11,7 +11,7 @@ import {
   civicLoseLine,
   civicFailRetryLine,
   civicWinLine,
-} from "./talk.js?v=ob18";
+} from "./talk.js?v=ob24";
 import { createStacker } from "./stacker.js?v=ob14";
 import { loadProgress, saveChallenge, challengeId, recordOf } from "./progress.js?v=ob16";
 import { unlockAudio } from "./stack-fx.js?v=ob14";
@@ -215,7 +215,7 @@ function scoreLine(app) {
   if (!rec?.done) return "";
   const max = rec.max || 0;
   const pct = max ? Math.round((100 * rec.social) / max) : 0;
-  if (max && rec.social >= max) return `Perfect · ${rec.social} / ${max} social homes. Stack again if you like.`;
+  if (max && rec.social >= max) return `Perfect \u00b7 ${rec.social} / ${max} social homes. Stack again if you like.`;
   return `You stacked ${rec.social} / ${max} social homes (${pct}%). Have another go.`;
 }
 
@@ -229,34 +229,34 @@ function fillFacts(app) {
   }
   const c = factCopy(app);
   const bits = [];
-  if (c.site) bits.push(`<p class="facts-site">${esc(c.site)}</p>`);
-  if (c.place) bits.push(`<p class="facts-place">${esc(c.place)}</p>`);
+  if (c.site) bits.push(`<p class=\"facts-site\">${esc(c.site)}</p>`);
+  if (c.place) bits.push(`<p class=\"facts-place\">${esc(c.place)}</p>`);
 
   if (c.ask) {
-    bits.push(`<p class="facts-ask"><span class="facts-label">What they want</span>${esc(c.ask)}</p>`);
+    bits.push(`<p class=\"facts-ask\"><span class=\"facts-label\">What they want</span>${esc(c.ask)}</p>`);
   }
 
   if (c.homes.length) {
     const tone = c.low ? " is-low" : c.ok ? " is-ok" : "";
-    bits.push(`<p class="facts-row"><span class="facts-label">Homes</span><span class="facts-aff${tone}">${esc(c.homes.join(" "))}</span></p>`);
+    bits.push(`<p class=\"facts-row\"><span class=\"facts-label\">Homes</span><span class=\"facts-aff${tone}\">${esc(c.homes.join(" "))}</span></p>`);
   }
 
-  bits.push(`<p class="facts-row"><span class="facts-label">London rule</span>${esc(c.london)}</p>`);
+  bits.push(`<p class=\"facts-row\"><span class=\"facts-label\">London rule</span>${esc(c.london)}</p>`);
 
   if (c.extras.length) {
-    bits.push(`<p class="facts-label">This street</p><ul class="facts-constraints">`);
+    bits.push(`<p class=\"facts-label\">This street</p><ul class=\"facts-constraints\">`);
     for (const extra of c.extras) bits.push(`<li>${esc(extra)}</li>`);
     bits.push(`</ul>`);
   }
 
   if (c.impact) {
-    bits.push(`<p class="facts-impact"><span class="facts-label">What it means</span>${esc(c.impact)}</p>`);
+    bits.push(`<p class=\"facts-impact\"><span class=\"facts-label\">What it means</span>${esc(c.impact)}</p>`);
   }
   if (c.stalled) {
-    bits.push(`<p class="facts-note">${esc(c.stalled)}</p>`);
+    bits.push(`<p class=\"facts-note\">${esc(c.stalled)}</p>`);
   }
   if (c.url) {
-    bits.push(`<p class="facts-row"><a href="${esc(c.url)}" target="_blank" rel="noopener noreferrer">${esc(c.linkLabel)}</a></p>`);
+    bits.push(`<p class=\"facts-row\"><a href=\"${esc(c.url)}\" target=\"_blank\" rel=\"noopener noreferrer\">${esc(c.linkLabel)}</a></p>`);
   }
   el.innerHTML = bits.join("");
   el.hidden = false;
@@ -409,7 +409,7 @@ async function postStance(app) {
   };
   if (navigator.share) {
     try {
-      await navigator.share({ title: payload.title, text: payload.text, url: payload.url });
+      await navigator.share({ title: payload.title, text: payload.text });
       return;
     } catch (err) {
       if (err && err.name === "AbortError") return;
