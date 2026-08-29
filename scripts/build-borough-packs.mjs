@@ -350,3 +350,46 @@ async function crimeAt(lat, lon) {
   const crimeLocs = locs.size;
   return { crimeCount, crimeLocs, crimeMonth: CRIME_MONTH, highCrime: crimeCount >= 60 };
 }
+
+async function schoolsNear(apps) {
+  if (!apps.length) return [];
+  let minLat = 90, maxLat = -90, minLon = 180, maxLon = -180;
+  for (const a of apps) {
+    minLat = Math.min(minLat, a.centroid.lat);
+    maxLat = Math.max(maxLat, a.centroid.lat);
+    minLon = Math.min(minLon, a.centroid.lon);
+    maxLon = Math.max(maxLon, a.centroid.lon);
+  }
+  const pad = 0.02;
+  const bbox = `${minLat - pad},${minLon - pad},${maxLat + pad},${maxLon + pad}`;
+  const q = `[out:json][timeout:25];(node["amenity"="school"](${bbox});way["amenity"="school"](${bbox}););out center 80;`;
+  try {
+    const res = await fetch("https://overpass-api.de/api/interpreter", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8", "User-Agent": "planning-desk/1.0" },
+      body: `data=${encodeURIComponent(q)}`,
+    });
+    if (!res.ok) return [];
+    const body = await res.json();
+    const out = [];
+    for (const el of body.elements || []) {
+      const lat = el.lat ?? el.center?.lat;
+      const lon = el.lon ?? el.center?.lon;
+      const name = el.tags?.name;
+      if (lat == null || lon == null || !name) continue;
+      out.push({ name, lat, lng: lon });
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
+function nearestSchool(lat, lon, schools) {
+  let best = null;
+  for (const s of schools) {
+    const m = haversineM(lat, lon, s.lat, s.lng);
+    if (!best || m < best.m) best = { name: s.name, m: Math.round(m) };
+  }
+  return best;
+}
