@@ -61,7 +61,6 @@ export function challengeSpec(app) {
   };
 }
 
-
 export function floorKind(i, spec) {
   const socialFloor = spec.luxury
     ? spec.limeFloors > 0 && i === 0
@@ -71,6 +70,124 @@ export function floorKind(i, spec) {
   return "mixed";
 }
 
+/** Won the stack but the permission is 0 / super-low social. */
+export function isLowSocial(app, spec) {
+  const s = spec || challengeSpec(app);
+  const g = app?.game || {};
+  const aff = Number(s.aff) || 0;
+  const socialHomes = Number(s.socialHomes) || 0;
+  const luxury = !!(g.luxury || s.luxury);
+  return aff === 0 || aff < 0.12 || socialHomes === 0 || (luxury && aff < 0.2);
+}
+
+export function isDecentSocial(app, spec) {
+  const s = spec || challengeSpec(app);
+  const g = app?.game || {};
+  const aff = Number(s.aff) || 0;
+  const luxuryZero = !!(g.luxury || s.luxury) && aff < 0.2;
+  return aff >= 0.2 && !luxuryZero;
+}
+
+function affordableInferred(app) {
+  return /unspecified-20|inferred/i.test(app?.game?.affordableSource || "");
+}
+
+/** Facts drawn only from pack fields. No invented numbers. */
+export function factsModel(app) {
+  const g = app?.game || {};
+  const spec = challengeSpec(app);
+  const c = g.constraints || {};
+  const constraints = [];
+  if (c.conservation) {
+    constraints.push(c.conservationName ? `Conservation area: ${c.conservationName}` : "Conservation area");
+  }
+  if (c.listed) {
+    constraints.push(c.listedName ? `Listed: ${c.listedName}` : "Listed building nearby");
+  }
+  if (c.article4) {
+    constraints.push(c.article4Name ? `Article 4: ${c.article4Name}` : "Article 4 direction");
+  }
+  if (c.brownfield) {
+    constraints.push(c.brownfieldName ? `Brownfield: ${c.brownfieldName}` : "Brownfield");
+  }
+  return {
+    site: app?.site_name || "",
+    borough: app?.borough || "",
+    ward: app?.ward || "",
+    ref: app?.lpa_app_no || "",
+    type: app?.application_type_full || "",
+    units: spec.units,
+    affordablePct: Math.round(spec.aff * 100),
+    affordableInferred: affordableInferred(app),
+    socialHomes: spec.socialHomes,
+    luxury: !!g.luxury,
+    londonPlan: 35,
+    constraints,
+    plainAsk: g.plainAsk || "",
+    plainImpact: g.plainImpact || "",
+    url: app?.url_planning_app || "",
+    stalled: looksStalled(app),
+    id: app?.id || app?.lpa_app_no || "",
+    slug: app?.boroughSlug || "",
+  };
+}
+
+export function shareOrigin() {
+  const host = location.hostname || "";
+  if (host.endsWith("here.now")) return location.origin;
+  if (location.origin && location.origin !== "null") return location.origin;
+  return "https://supple-island-3ck2.here.now";
+}
+
+export function shareUrl(app) {
+  const id = encodeURIComponent(app?.id || app?.lpa_app_no || "");
+  return `${shareOrigin()}/?v=ob8&app=${id}&scene=stack`;
+}
+
+export function civicHandles(civic, slug) {
+  const n = civic?.national || {};
+  const tags = [
+    n.pmOffice || "10DowningStreet",
+    n.pm || "andyburnham",
+    n.mhclg || "mhclg",
+    n.mayor || "MayorofLondon",
+  ];
+  const council = civic?.councils?.[slug];
+  if (council) tags.push(council);
+  return tags.map((h) => "@" + String(h).replace(/^@/, ""));
+}
+
+export function sharePayload(app, civic) {
+  const f = factsModel(app);
+  const spec = challengeSpec(app);
+  const url = shareUrl(app);
+  const site = f.site || "This site";
+  const borough = f.borough || "London";
+  const ref = f.ref || f.id || "";
+  const homes = spec.units ? `${spec.units} homes` : "Homes not stated on the pack";
+  const affLabel = f.affordableInferred
+    ? `${f.affordablePct}% affordable (inferred)`
+    : `${f.affordablePct}% affordable`;
+  const impact = clip(f.plainImpact, 180);
+  const tags = civicHandles(civic, f.slug).join(" ");
+  const text = [
+    `Our Block: ${site}, ${borough}${ref ? ` (${ref})` : ""}`,
+    `${homes}, ${affLabel} / ~${f.socialHomes} social. London Plan asks 35%.`,
+    impact,
+    url,
+    tags,
+  ].filter(Boolean).join("\n");
+  return {
+    title: `Our Block — ${site}`,
+    text,
+    url,
+  };
+}
+
+export function civicLoseLine() {
+  return "You stacked it, but this permission does almost nothing for social housing.";
+}
+
 export function talkLines(app) {
   const g = app?.game || {};
   const spec = challengeSpec(app);
@@ -78,36 +195,38 @@ export function talkLines(app) {
   const ask = clip(g.plainAsk || app?.site_name || "They want to build here.", 140);
   lines.push(ask);
 
-  const mad = !!(g.luxury || spec.aff < 0.2);
+  const pct = Math.round(spec.aff * 100);
+  const inferred = affordableInferred(app);
+  const affLabel = inferred ? `${pct}% affordable (inferred — not stated)` : `${pct}% affordable`;
+  const low = isLowSocial(app, spec);
 
-  if (mad) {
-    lines.push(
-      spec.units
-        ? `Now then. ${spec.units} on the plans, nowt for the list. Penthouse merchants.`
-        : "Now then. Dead luxury, this. Nowt for the list. Penthouse merchants."
-    );
-    lines.push("I'm not having it. Brick is homes. Glass is bobbins.");
+  if (low) {
+    if (spec.units) {
+      lines.push(
+        `Right. ${spec.units} homes on the plans, about ${spec.socialHomes} social. London Plan asks 35% on bigger schemes.`
+      );
+    } else {
+      lines.push(`Right. ${affLabel}. London Plan asks 35% on bigger schemes.`);
+    }
+    const who = clip(g.plainImpact, 130);
+    lines.push(who || "That leaves people waiting for a social home out of this one.");
+    lines.push("Have a look, then let's get it stacked.");
   } else if (spec.aff >= 0.35) {
     lines.push(
-      spec.socialHomes
-        ? `Ey up. ${spec.socialHomes} proper homes for the list. Sound, that.`
-        : "Ey up. This one actually hits 35%. Proper homes. Sound, that."
+      spec.units
+        ? `That's about ${spec.socialHomes} social homes from ${spec.units} — it meets the London Plan 35%.`
+        : "This one meets the London Plan 35% for affordable homes."
     );
-    lines.push("I'm chuffed. Land the brick — that's the stack we want.");
+    lines.push("Those are the homes that help people on the list.");
+    lines.push("Right. Let's get it stacked.");
   } else {
-    const pct = Math.round(spec.aff * 100);
-    lines.push(`Now then. ${pct}% affordable — bit thin, that. London Plan wants 35%.`);
-    lines.push("Not owt to write home about. Still, stack summat decent.");
-  }
-
-  if (looksStalled(app) && lines.length < 4) {
-    lines.push("Been sat a while, this. Still worth a stack.");
-  } else if (lines.length < 4) {
+    lines.push(`${affLabel} — that's a bit thin. London Plan wants 35%.`);
     lines.push(
-      mad
-        ? `${spec.floors} floors. Don't chase the glass, our kid.`
-        : `${spec.floors} floors. Tap to drop. Brick scores, glass doesn't.`
+      spec.units
+        ? `About ${spec.socialHomes} social homes from ${spec.units}. There's a gap versus the Plan.`
+        : "There's a gap versus the 35% the London Plan asks for."
     );
+    lines.push("Have a look, then let's get it stacked.");
   }
 
   return lines.slice(0, 4);
