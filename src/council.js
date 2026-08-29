@@ -1,8 +1,9 @@
 /** Our Block boot: landing → walk pins → talk → stacker. Desk stays dead. */
 
-import { createGlobe } from "./globe.js?v=ob5";
-import { talkLines, challengeSpec } from "./talk.js?v=ob5";
-import { createStacker } from "./stacker.js?v=ob5";
+import { createGlobe } from "./globe.js?v=ob6";
+import { talkLines, challengeSpec } from "./talk.js?v=ob6";
+import { createStacker } from "./stacker.js?v=ob6";
+import { loadProgress, saveChallenge, challengeId, recordOf } from "./progress.js?v=ob6";
 
 const LONDON = { lng: -0.1, lat: 51.51, zoom: 11.15, pitch: 0, bearing: -12 };
 
@@ -129,6 +130,15 @@ function startStackWander(globe, app) {
   tick();
 }
 
+function scoreLine(app) {
+  const rec = recordOf(challengeId(app));
+  if (!rec?.done) return "";
+  const max = rec.max || 0;
+  const pct = max ? Math.round((100 * rec.social) / max) : 0;
+  if (max && rec.social >= max) return `Perfect · ${rec.social} / ${max} social homes. Stack again if you like.`;
+  return `You stacked ${rec.social} / ${max} social homes (${pct}%). Have another go.`;
+}
+
 function showTalk(app) {
   current = app;
   borough = app.borough || "London";
@@ -139,10 +149,17 @@ function showTalk(app) {
   talkEl?.classList.toggle("is-mad", mad);
   talkEl?.classList.toggle("is-chuffed", chuffed);
   lines = talkLines(app);
+  const score = scoreLine(app);
+  if (score) lines = [score, ...lines];
   lineIdx = 0;
   $("talk-line").textContent = lines[0] || "";
   $("talk-next").hidden = lines.length <= 1;
   $("talk-stack").hidden = lines.length > 1;
+  const btn = $("talk-stack");
+  if (btn) {
+    const rec = recordOf(challengeId(app));
+    btn.textContent = rec?.done ? "STACK AGAIN" : "STACK";
+  }
   paintScore();
 }
 
@@ -198,6 +215,16 @@ function openStack(globe) {
   stacker = createStacker(canvas, current, (result) => {
     score += result.social || 0;
     paintScore();
+    const id = challengeId(current);
+    if (id) {
+      const all = saveChallenge(id, {
+        social: result.social || 0,
+        max: result.max || 0,
+        rubble: result.rubble || 0,
+        done: true,
+      });
+      globe.setProgress?.(all);
+    }
     setMode("walk", globe);
     globe.overview?.();
   });
@@ -206,6 +233,8 @@ function openStack(globe) {
   const seed = Number(q.get("seed") || 0);
   if (seed) stacker.seedFloors(seed);
   if (q.get("play") === "1") stacker.freezePlay();
+  if (q.get("chop") === "1") setTimeout(() => stacker.debugChopDrop?.(), 360);
+  if (q.get("win") === "1") stacker.seedFloors(stacker.spec.floors);
   window.__cb && (window.__cb.stacker = stacker);
 }
 
@@ -244,6 +273,7 @@ export function boot(root, data) {
     if (ok && globe.isReady()) {
       globe.setMode("3d");
       globe.setApplications(data.challenges || data.applications);
+      globe.setProgress?.(loadProgress());
       globe.flyToLngLat(LONDON.lng, LONDON.lat, { zoom: 11.2, pitch: 0, bearing: -12, duration: 0 });
     }
     const st = $("boot-status");
@@ -265,6 +295,7 @@ export function boot(root, data) {
   });
 
   window.addEventListener("resize", () => globe.resize());
+  window.visualViewport?.addEventListener("resize", () => globe.resize());
   window.__cb = {
     globe,
     score: () => score,
@@ -278,6 +309,7 @@ export function boot(root, data) {
     },
     stackNow: () => openStack(globe),
     stacker: () => stacker,
+    progress: () => loadProgress(),
   };
   return window.__cb;
 }
