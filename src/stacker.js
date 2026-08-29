@@ -1,6 +1,6 @@
 /** Our Block stacker. Crane at the top of the viewport. Pieces are storeys. */
 
-import { challengeSpec, floorKind, isLowSocial } from "./talk.js?v=ob10";
+import { challengeSpec, floorKind, isLowSocial } from "./talk.js?v=ob12";
 import { maxSocial } from "./progress.js?v=ob8";
 import {
   BLOCK_H,
@@ -139,7 +139,7 @@ export function createStacker(canvas, app, onDone) {
     const f = document.getElementById("stack-floors");
     const site = document.getElementById("stack-site");
     if (s) s.textContent = `Social ${social}`;
-    if (h) h.textContent = "♥".repeat(hp) + "♡".repeat(Math.max(0, 3 - hp));
+    if (h) h.textContent = "\u2665".repeat(hp) + "\u2661".repeat(Math.max(0, 3 - hp));
     if (f) f.textContent = `${stacked.length} / ${spec.floors}`;
     if (site) site.textContent = app?.site_name || app?.game?.plainAsk || "";
   }
@@ -263,7 +263,7 @@ export function createStacker(canvas, app, onDone) {
     rubblePx += px;
     const waste = Math.max(1, Math.round(px / RUBBLE_PX));
     social = Math.max(0, social - waste);
-    flash = `Rubble −${waste}`;
+    flash = `Rubble \u2212${waste}`;
     flashT = 1.05;
     return waste;
   }
@@ -305,7 +305,7 @@ export function createStacker(canvas, app, onDone) {
       if (perfect) {
         combo += 1;
         social += 2 + Math.max(0, combo - 1);
-        flash = combo > 1 ? `Perfect ×${combo}` : "Perfect · social";
+        flash = combo > 1 ? `Perfect \u00d7${combo}` : "Perfect \u00b7 social";
       } else {
         combo = 0;
         flash = `+${gain} social`;
@@ -400,7 +400,7 @@ export function createStacker(canvas, app, onDone) {
 
   function drawLose() {
     ctx.fillStyle = "rgba(13,27,22,0.4)";
-    ctx.fillRect(0, H * 0.38, W, 72);
+    ctx.fillRect(0, 0, W, H * 0.38, W, 72);
     ctx.fillStyle = "#ff8a8a";
     ctx.font = "700 28px Fredoka, sans-serif";
     ctx.textAlign = "center";
