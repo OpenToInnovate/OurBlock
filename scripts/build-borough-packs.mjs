@@ -432,3 +432,21 @@ async function fetchUkhpi(slug) {
   }
   return null;
 }
+
+const boroughsDoc = JSON.parse(fs.readFileSync(path.join(ROOT, "data", "boroughs.json"), "utf8"));
+const piprDoc = JSON.parse(fs.readFileSync(path.join(ROOT, "data", "pipr-london.json"), "utf8"));
+const affDoc = JSON.parse(fs.readFileSync(path.join(ROOT, "data", "affordable-2023-24.json"), "utf8"));
+const hospitalsDoc = JSON.parse(fs.readFileSync(path.join(ROOT, "data", "hospitals-london.json"), "utf8"));
+const thPack = JSON.parse(fs.readFileSync(path.join(ROOT, "data", "packs", "tower-hamlets.json"), "utf8"));
+const hospitals = hospitalsDoc.sites || [];
+const thBase = thPack.baseline;
+
+const only = process.argv.slice(2);
+const targets = boroughsDoc.boroughs.filter((b) => {
+  if (b.slug === "tower-hamlets") return false;
+  if (only.length && !only.includes(b.slug) && !only.includes(b.name)) return false;
+  return true;
+});
+
+const summary = [];
+fs.mkdirSync(path.join(ROOT, "data", "packs"), { recursive: true });
