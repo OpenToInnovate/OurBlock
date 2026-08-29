@@ -1,11 +1,29 @@
 /** Our Block stacker. Crane at the top of the viewport. Pieces are storeys. */
 
-import { challengeSpec, floorKind } from "./talk.js?v=ob2";
+import { challengeSpec, floorKind } from "./talk.js?v=ob6";
+import { maxSocial } from "./progress.js?v=ob6";
+import {
+  BLOCK_H,
+  drawStorey,
+  drawPlinth,
+  drawHook,
+  drawDebris,
+} from "./stack-draw.js?v=ob6";
+import {
+  playCheer,
+  playLose,
+  playRelease,
+  playThud,
+  playSmash,
+  spawnBurst,
+  updateParticles,
+  drawParticles,
+} from "./stack-fx.js?v=ob6";
 
-const BLOCK_H = 56;
 const HOOK_Y = 22;
 const CABLE = 44;
 const MIN_OVERLAP = 12;
+const RUBBLE_PX = 40;
 
 function baseWidth(spec, canvasW) {
   let w = Math.min(248, Math.round(canvasW * 0.44));
@@ -16,254 +34,26 @@ function baseWidth(spec, canvasW) {
 }
 
 function plinthTop(H) {
-  return Math.round(H * 0.6);
+  return Math.round(H * 0.72);
 }
 
-function shade(hex, amt) {
-  const n = hex.replace("#", "");
-  const r = Math.max(0, Math.min(255, parseInt(n.slice(0, 2), 16) + amt));
-  const g = Math.max(0, Math.min(255, parseInt(n.slice(2, 4), 16) + amt));
-  const b = Math.max(0, Math.min(255, parseInt(n.slice(4, 6), 16) + amt));
-  return `rgb(${r},${g},${b})`;
-}
-
-function windowCols(x, w, module = 30) {
-  const xs = [];
-  const start = Math.ceil((x + 8) / module) * module;
-  for (let xx = start; xx + 16 < x + w - 6; xx += module) xs.push(xx);
-  if (!xs.length && w > 28) xs.push(x + w / 2 - 7);
-  return xs;
-}
-
-function clipStorey(ctx, x, y, w, h, draw) {
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(x, y, w, h);
-  ctx.clip();
-  draw();
-  ctx.restore();
-}
-
-function brickCourses(ctx, x, y, w, h, brick, mortar, course = 5, stretch = 15) {
-  ctx.fillStyle = brick;
-  ctx.fillRect(x, y, w, h);
-  for (let row = 0, yy = y; yy < y + h; row++, yy += course) {
-    ctx.fillStyle = row % 6 === 5 ? shade(brick, -18) : mortar;
-    ctx.fillRect(x, yy + course - 1, w, 1);
-    const off = row % 2 ? stretch / 2 : 0;
-    ctx.fillStyle = mortar;
-    for (let xx = x + off; xx < x + w; xx += stretch) {
-      ctx.fillRect(xx, yy, 1, course);
-    }
-  }
-}
-
-function leftLight(ctx, x, y, w, h) {
-  const g = ctx.createLinearGradient(x, y, x + w, y);
-  g.addColorStop(0, "rgba(255,244,220,0.22)");
-  g.addColorStop(0.28, "rgba(255,244,220,0.05)");
-  g.addColorStop(0.72, "rgba(0,0,0,0)");
-  g.addColorStop(1, "rgba(0,0,0,0.28)");
-  ctx.fillStyle = g;
-  ctx.fillRect(x, y, w, h);
-}
-
-function glassPane(ctx, x, y, w, h, night) {
-  const g = ctx.createLinearGradient(x, y, x + w, y);
-  g.addColorStop(0, night ? "#3a4e58" : "#6a8a96");
-  g.addColorStop(0.35, night ? "#1a2830" : "#3d5560");
-  g.addColorStop(1, night ? "#0c1418" : "#24343c");
-  ctx.fillStyle = g;
-  ctx.fillRect(x, y, w, h);
-  ctx.fillStyle = "rgba(220,236,255,0.18)";
-  ctx.fillRect(x, y, Math.max(2, w * 0.28), h);
-}
-
-function drawSocial(ctx, b, y, spec, isTop) {
-  const { x, w } = b;
-  const h = b.h || BLOCK_H;
-  const concrete = !!spec.brown;
-  clipStorey(ctx, x, y, w, h, () => {
-    if (concrete) {
-      ctx.fillStyle = "#b4aea4";
-      ctx.fillRect(x, y, w, h);
-      ctx.fillStyle = "#9e9890";
-      for (let yy = y + 6; yy < y + h; yy += 8) ctx.fillRect(x, yy, w, 1);
-      ctx.fillStyle = "#c8c2b8";
-      ctx.fillRect(x, y, 5, h);
-    } else {
-      brickCourses(ctx, x, y, w, h, "#c49a52", "#e6d4b0", 5, 14);
-      ctx.fillStyle = "#8a6a32";
-      ctx.fillRect(x, y + h - 3, w, 3);
-    }
-    leftLight(ctx, x, y, w, h);
-
-    const cols = windowCols(x, w, 28);
-    const winH = 22;
-    const winW = 11;
-    const winY = y + 10;
-    for (const cx of cols) {
-      ctx.fillStyle = "#efe6d6";
-      ctx.fillRect(cx - 2, winY - 2, winW + 4, winH + 4);
-      glassPane(ctx, cx, winY, winW, winH, false);
-      ctx.fillStyle = "#efe6d6";
-      ctx.fillRect(cx + 5, winY, 1, winH);
-      ctx.fillRect(cx, winY + 10, winW, 1);
-    }
-
-    const railY = y + h - 13;
-    ctx.fillStyle = concrete ? "#c4c0b6" : "#c8b8a4";
-    ctx.fillRect(x, railY + 8, w, 5);
-    ctx.strokeStyle = "#2a2c2e";
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.moveTo(x + 2, railY);
-    ctx.lineTo(x + w - 2, railY);
-    ctx.stroke();
-    for (let i = 0; i < cols.length; i++) {
-      const px = cols[i] + 5;
-      ctx.beginPath();
-      ctx.moveTo(px, railY);
-      ctx.lineTo(px, railY + 8);
-      ctx.stroke();
-    }
-    ctx.beginPath();
-    ctx.moveTo(x + 2, railY + 8);
-    ctx.lineTo(x + w - 2, railY + 8);
-    ctx.stroke();
-  });
-  if (isTop) {
-    ctx.fillStyle = concrete ? "#d0ccc4" : "#a07a3c";
-    ctx.fillRect(x - 1, y, w + 2, 4);
-    ctx.fillStyle = concrete ? "#ece8e0" : "#d4b46a";
-    ctx.fillRect(x - 1, y, w + 2, 1);
-  }
-}
-
-function drawMixed(ctx, b, y, spec, isTop) {
-  const { x, y: _y, w } = b;
-  const h = b.h || BLOCK_H;
-  clipStorey(ctx, x, y, w, h, () => {
-    brickCourses(ctx, x, y, w, h, "#c2b492", "#e0d6c0", 5, 16);
-    ctx.fillStyle = "#9a9a94";
-    ctx.fillRect(x, y + h - 4, w, 4);
-    leftLight(ctx, x, y, w, h);
-    const cols = windowCols(x, w, 32);
-    const winW = 14;
-    const winH = 26;
-    const winY = y + 12;
-    for (const cx of cols) {
-      ctx.fillStyle = "#6a6862";
-      ctx.fillRect(cx - 2, winY - 2, winW + 4, winH + 3);
-      ctx.fillStyle = "#4a4844";
-      ctx.fillRect(cx - 1, winY - 1, winW + 2, winH + 1);
-      glassPane(ctx, cx, winY, winW, winH, false);
-    }
-  });
-  if (isTop) {
-    ctx.fillStyle = "#d8d0be";
-    ctx.fillRect(x - 1, y, w + 2, 4);
-    ctx.fillStyle = "#f0eadc";
-    ctx.fillRect(x - 1, y, w + 2, 1);
-  }
-}
-
-function drawLuxury(ctx, b, y, spec, isTop) {
-  const { x, w } = b;
-  const h = b.h || BLOCK_H;
-  clipStorey(ctx, x, y, w, h, () => {
-    const bg = ctx.createLinearGradient(x, y, x + w, y);
-    bg.addColorStop(0, "#243038");
-    bg.addColorStop(0.4, "#151c22");
-    bg.addColorStop(1, "#0a1014");
-    ctx.fillStyle = bg;
-    ctx.fillRect(x, y, w, h);
-
-    const module = 20;
-    const start = Math.ceil((x + 4) / module) * module;
-    for (let xx = start; xx < x + w - 6; xx += module) {
-      glassPane(ctx, xx + 2, y + 5, 14, h - 10, true);
-      ctx.fillStyle = "#b08a3e";
-      ctx.fillRect(xx, y + 4, 2, h - 8);
-    }
-    ctx.fillStyle = "#c4a050";
-    ctx.fillRect(x, y + 4, w, 2);
-    ctx.fillRect(x, y + h - 8, w, 2);
-    ctx.fillStyle = "rgba(255,220,140,0.12)";
-    ctx.fillRect(x, y, 6, h);
-    ctx.fillStyle = "rgba(0,0,0,0.35)";
-    ctx.fillRect(x + w - 5, y, 5, h);
-  });
-  if (isTop) {
-    ctx.fillStyle = "#d4b46a";
-    ctx.fillRect(x - 1, y, w + 2, 4);
-    ctx.fillStyle = "#f0d890";
-    ctx.fillRect(x - 1, y, w + 2, 1);
-  }
-}
-
-function drawStorey(ctx, b, y, spec, isTop) {
-  if (b.kind === "luxury") drawLuxury(ctx, b, y, spec, isTop);
-  else if (b.kind === "mixed") drawMixed(ctx, b, y, spec, isTop);
-  else drawSocial(ctx, b, y, spec, isTop);
-  ctx.strokeStyle = "rgba(0,0,0,0.28)";
-  ctx.lineWidth = 1;
-  ctx.strokeRect(b.x + 0.5, y + 0.5, b.w - 1, (b.h || BLOCK_H) - 1);
-}
-
-function drawPlinth(ctx, spec, W, top) {
-  const bw = baseWidth(spec, W);
-  const extra = spec.brown ? 26 : spec.tight ? 10 : 16;
-  const pw = bw + extra;
-  const px = W / 2 - pw / 2;
-  ctx.fillStyle = "#6e6a64";
-  ctx.fillRect(px - 8, top + 12, pw + 16, 16);
-  ctx.fillStyle = "#8a8680";
-  ctx.fillRect(px - 3, top, pw + 6, 14);
-  ctx.fillStyle = "#a8a49c";
-  ctx.fillRect(px, top, pw, 4);
-  const lg = ctx.createLinearGradient(px, top, px + pw, top);
-  lg.addColorStop(0, "rgba(255,255,255,0.2)");
-  lg.addColorStop(1, "rgba(0,0,0,0.28)");
-  ctx.fillStyle = lg;
-  ctx.fillRect(px - 3, top, pw + 6, 14);
-  ctx.fillStyle = "#2a2c2e";
-  ctx.fillRect(px + pw * 0.42, top + 2, Math.max(16, pw * 0.16), 12);
-}
-
-function drawHook(ctx, W, hx, blockTop) {
-  ctx.fillStyle = "#6a5840";
-  ctx.fillRect(0, 6, W, 10);
-  ctx.fillStyle = "#c4a574";
-  ctx.fillRect(0, 6, W, 7);
-  ctx.fillStyle = "#8a7348";
-  ctx.fillRect(0, 13, W, 2);
-  ctx.fillStyle = "#2a2418";
-  for (let x = 18; x < W; x += 46) ctx.fillRect(x, 7, 3, 6);
-
-  ctx.fillStyle = "#e0c888";
-  ctx.fillRect(hx - 18, 3, 36, 16);
-  ctx.fillStyle = "#8a7040";
-  ctx.fillRect(hx - 18, 3, 36, 3);
-  ctx.fillStyle = "#2a2418";
-  ctx.fillRect(hx - 3, 8, 6, 10);
-
-  ctx.strokeStyle = "#f2e6c4";
-  ctx.lineWidth = 1.6;
-  ctx.beginPath();
-  ctx.moveTo(hx, 18);
-  ctx.lineTo(hx, blockTop);
-  ctx.stroke();
-
-  ctx.strokeStyle = "#f0d090";
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.arc(hx, blockTop + 2, 7, Math.PI * 0.15, Math.PI * 0.95, false);
-  ctx.stroke();
+function stampPiece(kind, x, w, y, extra = {}) {
+  return {
+    kind,
+    x,
+    w,
+    y,
+    h: BLOCK_H,
+    vy: 0,
+    textureOriginX: extra.textureOriginX ?? 0,
+    u0: extra.u0 ?? 0,
+    fullWidth: extra.fullWidth ?? w,
+  };
 }
 
 export function createStacker(canvas, app, onDone) {
   const spec = challengeSpec(app);
+  const maxHomes = maxSocial(spec);
   const ctx = canvas.getContext("2d");
   let raf = 0;
   let running = false;
@@ -272,7 +62,11 @@ export function createStacker(canvas, app, onDone) {
   let hp = 3;
   let social = 0;
   let combo = 0;
+  let rubblePx = 0;
   let stacked = [];
+  let debris = [];
+  let rubble = [];
+  let particles = [];
   let phase = "swing";
   let t = 0;
   let last = 0;
@@ -283,11 +77,24 @@ export function createStacker(canvas, app, onDone) {
   let over = false;
   let frozen = false;
   let armed = false;
+  let winT = 0;
+  let winShown = 0;
+  let skipWin = false;
+  let endSent = false;
+
+  function viewportSize() {
+    const host = canvas.parentElement || canvas;
+    const vv = window.visualViewport;
+    const w = host.clientWidth || Math.round(vv?.width || window.innerWidth);
+    const h = host.clientHeight || Math.round(vv?.height || window.innerHeight);
+    return { w: Math.max(1, w), h: Math.max(1, h) };
+  }
 
   function resize() {
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    W = canvas.clientWidth || window.innerWidth;
-    H = canvas.clientHeight || window.innerHeight;
+    const sz = viewportSize();
+    W = sz.w;
+    H = sz.h;
     canvas.width = Math.round(W * dpr);
     canvas.height = Math.round(H * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -307,10 +114,12 @@ export function createStacker(canvas, app, onDone) {
   function makeBlock() {
     const i = stacked.length;
     const kind = floorKind(i, spec);
-    let w = stacked.length ? stacked[stacked.length - 1].w : baseWidth(spec, W);
-    if (kind === "luxury") w = Math.max(70, Math.round(w * (spec.luxury ? 0.88 : 0.92)));
-    if (kind === "mixed" && stacked.length) w = Math.max(74, Math.round(w * 0.96));
-    return { kind, w, x: W / 2 - w / 2, y: 0, h: BLOCK_H, vy: 0 };
+    const lastTop = stacked[stacked.length - 1];
+    const w = lastTop ? lastTop.w : baseWidth(spec, W);
+    const x = W / 2 - w / 2;
+    return stampPiece(kind, x, w, 0, lastTop
+      ? { textureOriginX: lastTop.textureOriginX, u0: lastTop.u0, fullWidth: lastTop.fullWidth }
+      : { textureOriginX: 0, u0: 0, fullWidth: w });
   }
 
   function swingX() {
@@ -323,56 +132,143 @@ export function createStacker(canvas, app, onDone) {
     const f = document.getElementById("stack-floors");
     const site = document.getElementById("stack-site");
     if (s) s.textContent = `Social ${social}`;
-    if (h) h.textContent = "\u2665".repeat(hp) + "\u2661".repeat(Math.max(0, 3 - hp));
+    if (h) h.textContent = "♥".repeat(hp) + "♡".repeat(Math.max(0, 3 - hp));
     if (f) f.textContent = `${stacked.length} / ${spec.floors}`;
     if (site) site.textContent = app?.site_name || app?.game?.plainAsk || "";
+  }
+
+  function result(won) {
+    return {
+      social,
+      won,
+      floors: stacked.length,
+      spec,
+      rubble: rubblePx,
+      max: maxHomes,
+    };
+  }
+
+  function sendDone(won) {
+    if (endSent) return;
+    endSent = true;
+    stop();
+    onDone?.(result(won));
+  }
+
+  function startWinFx() {
+    winT = 0;
+    winShown = 0;
+    skipWin = false;
+    spawnBurst(particles, W, H, W * 0.5, H * 0.28, 42);
+    spawnBurst(particles, W, H, W * 0.22, H * 0.2, 28);
+    spawnBurst(particles, W, H, W * 0.78, H * 0.22, 28);
+    spawnBurst(particles, W, H, W * 0.4, H * 0.16, 18);
+    playCheer();
   }
 
   function finish(won) {
     if (over) return;
     over = true;
     phase = won ? "win" : "lose";
-    flash = won ? "Homes up." : "Missed the stack.";
-    flashT = 1.6;
-    setTimeout(() => {
-      stop();
-      onDone?.({ social, won, floors: stacked.length, spec });
-    }, 900);
+    flash = won ? "STACKED" : "Missed the stack.";
+    flashT = won ? 3 : 1.1;
+    if (won) startWinFx();
+    else {
+      playLose();
+      setTimeout(() => sendDone(false), 720);
+    }
+  }
+
+  function pileSpot(side, w) {
+    const base = stacked[0] || { x: W / 2 - 40, w: 80 };
+    const heap = rubble.filter((r) => r.side === side);
+    let hy = plinthTop(H) + 6;
+    for (const r of heap) hy -= Math.min(16, 7 + r.w * 0.08);
+    const x = side < 0 ? base.x - 12 - w : base.x + base.w + 12;
+    return { x, y: hy - BLOCK_H * 0.55, rot: side * (0.35 + Math.random() * 0.25) };
+  }
+
+  function spawnSlice(src, x, w, u0, side, y) {
+    if (w < 5) return;
+    const bit = stampPiece(src.kind, x, w, y, {
+      textureOriginX: src.textureOriginX,
+      u0,
+      fullWidth: src.fullWidth,
+    });
+    bit.side = side;
+    bit.vx = side * (90 + Math.random() * 70);
+    bit.vy = 30 + Math.random() * 40;
+    bit.rot = 0;
+    bit.vr = side * (1.8 + Math.random() * 1.6);
+    bit.falling = true;
+    debris.push(bit);
+  }
+
+  function applyWaste(px) {
+    if (px < 6) return 0;
+    rubblePx += px;
+    const waste = Math.max(1, Math.round(px / RUBBLE_PX));
+    social = Math.max(0, social - waste);
+    flash = `Rubble −${waste}`;
+    flashT = 1.05;
+    return waste;
   }
 
   function land(block, x, y, prev) {
     let nx = x;
     let nw = block.w;
+    let u0 = block.u0 || 0;
     let perfect = true;
+    let chopped = 0;
     if (prev) {
       const left = Math.max(x, prev.x);
       const right = Math.min(x + block.w, prev.x + prev.w);
       const overlap = right - left;
       if (overlap < MIN_OVERLAP) return false;
+      const leftHang = left - x;
+      const rightHang = x + block.w - right;
+      if (leftHang > 4) {
+        spawnSlice(block, x, leftHang, block.u0 || 0, -1, y);
+        chopped += leftHang;
+      }
+      if (rightHang > 4) {
+        spawnSlice(block, right, rightHang, (block.u0 || 0) + (right - x), 1, y);
+        chopped += rightHang;
+      }
       nx = left;
       nw = overlap;
-      perfect = Math.abs(x - prev.x) < 7 && Math.abs(block.w - prev.w) < 10;
+      u0 = (block.u0 || 0) + (left - x);
+      perfect = Math.abs(x - prev.x) < 7 && Math.abs(block.w - prev.w) < 10 && chopped < 8;
     }
-    stacked.push({ x: nx, y, w: nw, h: BLOCK_H, kind: block.kind });
+    stacked.push(stampPiece(block.kind, nx, nw, y, {
+      textureOriginX: block.textureOriginX,
+      u0,
+      fullWidth: block.fullWidth || block.w,
+    }));
     if (block.kind === "social") {
       const gain = spec.homesPerLime || 1;
       social += gain;
       if (perfect) {
         combo += 1;
         social += 2 + Math.max(0, combo - 1);
-        flash = combo > 1 ? `Perfect \u00d7${combo}` : "Perfect \u00b7 social";
+        flash = combo > 1 ? `Perfect ×${combo}` : "Perfect · social";
       } else {
         combo = 0;
         flash = `+${gain} social`;
       }
+      flashT = 0.9;
     } else if (block.kind === "luxury") {
       combo = 0;
       flash = perfect ? "Landed glass. 0 homes." : "Private floor. 0 for the list.";
+      flashT = 0.9;
     } else {
       combo = 0;
       flash = perfect ? "Mixed floor. Still private." : "Buff brick. 0 for the list.";
+      flashT = 0.9;
     }
-    flashT = 0.9;
+    playThud();
+    if (chopped > 4) playSmash();
+    if (chopped >= 6) applyWaste(chopped);
     if (stacked.length >= spec.floors) finish(true);
     else {
       phase = "swing";
@@ -383,6 +279,10 @@ export function createStacker(canvas, app, onDone) {
   }
 
   function miss() {
+    if (drop) {
+      spawnSlice(drop, drop.x, Math.max(18, drop.w * 0.45), drop.u0 || 0, drop.x + drop.w / 2 < W / 2 ? -1 : 1, drop.y);
+      playSmash();
+    }
     hp -= 1;
     combo = 0;
     flash = "Miss";
@@ -401,26 +301,82 @@ export function createStacker(canvas, app, onDone) {
     return plinthTop(H) - BLOCK_H;
   }
 
+  function stepDebris(dt) {
+    for (let i = debris.length - 1; i >= 0; i--) {
+      const d = debris[i];
+      d.vy += 1680 * dt;
+      d.x += (d.vx || 0) * dt;
+      d.y += d.vy * dt;
+      d.rot = (d.rot || 0) + (d.vr || 0) * dt;
+      d.vx *= 0.992;
+      const dest = pileSpot(d.side || 1, d.w);
+      const floor = dest.y;
+      if (d.y >= floor) {
+        d.y = floor;
+        d.x = dest.x;
+        d.rot = dest.rot;
+        d.falling = false;
+        rubble.push(d);
+        debris.splice(i, 1);
+      }
+    }
+  }
+
+  function drawWin(dt) {
+    winT += dt;
+    if (winT > 0.35 && winT < 2.4 && Math.random() < dt * 3.2) {
+      spawnBurst(particles, W, H, W * (0.18 + Math.random() * 0.64), H * (0.14 + Math.random() * 0.3), 18);
+    }
+    const target = social;
+    winShown += (target - winShown) * Math.min(1, dt * 6);
+    if (target - winShown < 0.4) winShown = target;
+    ctx.fillStyle = "rgba(8, 16, 12, 0.42)";
+    ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = "center";
+    ctx.shadowColor = "#000";
+    ctx.shadowBlur = 14;
+    ctx.fillStyle = "#c8f542";
+    ctx.font = `700 ${Math.min(64, Math.round(W * 0.16))}px Fredoka, sans-serif`;
+    ctx.fillText("STACKED", W / 2, H * 0.36);
+    ctx.fillStyle = "#e8f6dc";
+    ctx.font = "700 28px Fredoka, sans-serif";
+    ctx.fillText(`${Math.round(winShown)} social homes`, W / 2, H * 0.36 + 46);
+    ctx.font = "600 15px Nunito, sans-serif";
+    ctx.fillStyle = "#c5d6bc";
+    const mx = maxHomes || target;
+    ctx.fillText(mx ? `${Math.round(winShown)} / ${mx}` : "Homes for the list", W / 2, H * 0.36 + 72);
+    ctx.font = "600 13px Nunito, sans-serif";
+    ctx.fillText("Tap to keep walking", W / 2, H * 0.36 + 98);
+    ctx.shadowBlur = 0;
+    if (winT >= 3 || skipWin) sendDone(true);
+  }
+
+  function drawLose() {
+    ctx.fillStyle = "rgba(13,27,22,0.4)";
+    ctx.fillRect(0, H * 0.38, W, 72);
+    ctx.fillStyle = "#ff8a8a";
+    ctx.font = "700 28px Fredoka, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("FALLEN", W / 2, H * 0.38 + 46);
+  }
+
   function draw(dt) {
     t += dt;
     if (flashT > 0) flashT -= dt;
+    stepDebris(dt);
+    updateParticles(particles, dt);
     ctx.clearRect(0, 0, W, H);
 
-    const wash = ctx.createRadialGradient(W / 2, H * 0.42, H * 0.12, W / 2, H * 0.5, H * 0.9);
-    wash.addColorStop(0, "rgba(10,16,20,0)");
-    wash.addColorStop(0.62, "rgba(10,16,20,0.04)");
-    wash.addColorStop(1, "rgba(8,12,16,0.18)");
-    ctx.fillStyle = wash;
-    ctx.fillRect(0, 0, W, H);
-
     const topY = stacked.length ? stacked[stacked.length - 1].y : plinthTop(H);
-    const wantCam = H * 0.4 - topY;
+    const wantCam = H * 0.42 - topY;
     cam += (wantCam - cam) * Math.min(1, dt * 4);
 
     ctx.save();
     ctx.translate(0, cam);
 
     drawPlinth(ctx, spec, W, plinthTop(H));
+    for (const r of rubble) drawDebris(ctx, r, spec);
+    for (const d of debris) drawDebris(ctx, d, spec);
     for (let i = 0; i < stacked.length; i++) {
       drawStorey(ctx, stacked[i], stacked[i].y, spec, i === stacked.length - 1 && phase !== "drop");
     }
@@ -454,8 +410,10 @@ export function createStacker(canvas, app, onDone) {
       drawHook(ctx, W, W / 2, HOOK_Y + CABLE);
     }
 
-    if (flashT > 0 && flash) {
-      ctx.fillStyle = "#e8f6dc";
+    drawParticles(ctx, particles);
+
+    if (flashT > 0 && flash && phase !== "win") {
+      ctx.fillStyle = flash.startsWith("Rubble") ? "#ffb4a0" : "#e8f6dc";
       ctx.font = "700 22px Fredoka, sans-serif";
       ctx.textAlign = "center";
       ctx.shadowColor = "#000";
@@ -463,14 +421,8 @@ export function createStacker(canvas, app, onDone) {
       ctx.fillText(flash, W / 2, 108);
       ctx.shadowBlur = 0;
     }
-    if (over) {
-      ctx.fillStyle = "rgba(13,27,22,0.55)";
-      ctx.fillRect(0, H * 0.4, W, 80);
-      ctx.fillStyle = "#c8f542";
-      ctx.font = "700 28px Fredoka, sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText(phase === "win" ? "STACKED" : "FALLEN", W / 2, H * 0.4 + 50);
-    }
+    if (phase === "win") drawWin(dt);
+    else if (phase === "lose") drawLose();
   }
 
   function frame(now) {
@@ -482,10 +434,15 @@ export function createStacker(canvas, app, onDone) {
   }
 
   function tryDrop() {
+    if (phase === "win") {
+      skipWin = true;
+      return;
+    }
     if (!armed || over || phase !== "swing" || !drop) return;
     phase = "drop";
     drop.y = HOOK_Y + CABLE - cam;
     drop.vy = 50;
+    playRelease();
   }
 
   function onPtr(ev) {
@@ -504,19 +461,27 @@ export function createStacker(canvas, app, onDone) {
     stacked = [];
     social = 0;
     combo = 0;
+    rubble = [];
+    debris = [];
+    rubblePx = 0;
     const count = Math.max(0, Math.min(Number(n) || 0, spec.floors));
     const bw = baseWidth(spec, W);
     for (let i = 0; i < count; i++) {
       const kind = floorKind(i, spec);
       const y = plinthTop(H) - (i + 1) * BLOCK_H;
-      stacked.push({ x: W / 2 - bw / 2, y, w: bw, h: BLOCK_H, kind });
+      const x = W / 2 - bw / 2;
+      stacked.push(stampPiece(kind, x, bw, y, { textureOriginX: 0, u0: 0, fullWidth: bw }));
       if (kind === "social") social += spec.homesPerLime || 1;
     }
     over = false;
     phase = stacked.length >= spec.floors ? "win" : "swing";
     drop = phase === "swing" ? makeBlock() : null;
     const topY = stacked.length ? stacked[stacked.length - 1].y : plinthTop(H);
-    cam = H * 0.4 - topY;
+    cam = H * 0.42 - topY;
+    if (phase === "win") {
+      over = true;
+      startWinFx();
+    }
     paintHud();
   }
 
@@ -529,23 +494,53 @@ export function createStacker(canvas, app, onDone) {
     if (opts.freeze) frozen = true;
   }
 
+  function debugChopDrop() {
+    if (!drop) drop = makeBlock();
+    const prev = stacked[stacked.length - 1];
+    const ox = prev ? prev.x + Math.max(28, prev.w * 0.28) : W / 2 - drop.w / 2 + 36;
+    drop.x = ox;
+    drop.y = nextLandY() - 8;
+    drop.vy = 80;
+    phase = "drop";
+    frozen = false;
+  }
+
+  function bindView() {
+    window.addEventListener("resize", resize);
+    window.visualViewport?.addEventListener("resize", resize);
+    window.visualViewport?.addEventListener("scroll", resize);
+  }
+
+  function unbindView() {
+    window.removeEventListener("resize", resize);
+    window.visualViewport?.removeEventListener("resize", resize);
+    window.visualViewport?.removeEventListener("scroll", resize);
+  }
+
   function start() {
     resize();
     running = true;
     over = false;
+    endSent = false;
     hp = 3;
     social = 0;
     combo = 0;
+    rubblePx = 0;
     stacked = [];
+    debris = [];
+    rubble = [];
+    particles = [];
     phase = "swing";
     t = 0;
     cam = 0;
+    winT = 0;
+    skipWin = false;
     drop = makeBlock();
     armed = false;
     paintHud();
     last = performance.now();
     setTimeout(() => { armed = true; }, 280);
-    window.addEventListener("resize", resize);
+    bindView();
     canvas.addEventListener("pointerdown", onPtr, { passive: false });
     const overlay = canvas.parentElement;
     if (overlay && overlay !== canvas) overlay.addEventListener("pointerdown", onPtr, { passive: false });
@@ -556,7 +551,7 @@ export function createStacker(canvas, app, onDone) {
   function stop() {
     running = false;
     cancelAnimationFrame(raf);
-    window.removeEventListener("resize", resize);
+    unbindView();
     canvas.removeEventListener("pointerdown", onPtr);
     const overlay = canvas.parentElement;
     if (overlay) overlay.removeEventListener("pointerdown", onPtr);
@@ -569,8 +564,21 @@ export function createStacker(canvas, app, onDone) {
     drop: tryDrop,
     seedFloors,
     debugMidDrop,
+    debugChopDrop,
     freezePlay: () => debugMidDrop({ freeze: true }),
     spec,
-    state: () => ({ phase, hp, social, floors: stacked.length, cam, over, kind: drop?.kind }),
+    state: () => ({
+      phase,
+      hp,
+      social,
+      floors: stacked.length,
+      cam,
+      over,
+      kind: drop?.kind,
+      lastW: stacked.length ? stacked[stacked.length - 1].w : 0,
+      dropW: drop?.w ?? 0,
+      rubble: rubblePx,
+      max: maxHomes,
+    }),
   };
 }
