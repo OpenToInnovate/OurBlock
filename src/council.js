@@ -1,8 +1,8 @@
 /** Our Block boot: landing → walk pins → talk → stacker. Desk stays dead. */
 
-import { createGlobe } from "./globe.js?v=ob3";
-import { talkLines } from "./talk.js?v=ob3";
-import { createStacker } from "./stacker.js?v=ob3";
+import { createGlobe } from "./globe.js?v=ob5";
+import { talkLines, challengeSpec } from "./talk.js?v=ob5";
+import { createStacker } from "./stacker.js?v=ob5";
 
 const LONDON = { lng: -0.1, lat: 51.51, zoom: 11.15, pitch: 0, bearing: -12 };
 
@@ -132,6 +132,12 @@ function startStackWander(globe, app) {
 function showTalk(app) {
   current = app;
   borough = app.borough || "London";
+  const spec = challengeSpec(app);
+  const talkEl = $("talk");
+  const mad = !!(app.game?.luxury || spec.aff < 0.2);
+  const chuffed = !mad && spec.aff >= 0.35;
+  talkEl?.classList.toggle("is-mad", mad);
+  talkEl?.classList.toggle("is-chuffed", chuffed);
   lines = talkLines(app);
   lineIdx = 0;
   $("talk-line").textContent = lines[0] || "";
