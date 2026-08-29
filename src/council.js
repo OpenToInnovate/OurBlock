@@ -10,8 +10,9 @@ import {
   sharePayload,
   civicLoseLine,
   civicFailRetryLine,
-} from "./talk.js?v=ob9";
-import { createStacker } from "./stacker.js?v=ob9";
+  civicWinLine,
+} from "./talk.js?v=ob10";
+import { createStacker } from "./stacker.js?v=ob10";
 import { loadProgress, saveChallenge, challengeId, recordOf } from "./progress.js?v=ob8";
 import { unlockAudio } from "./stack-fx.js?v=ob8";
 
@@ -29,6 +30,8 @@ let driftTimer = 0;
 let driftDir = 1;
 let stackWanderTimer = 0;
 let civicBundle = null;
+let civicIgnoreUntil = 0;
+let talkIgnoreUntil = 0;
 
 function $(id) {
   return document.getElementById(id);
@@ -228,6 +231,7 @@ function showTalk(app) {
   }
   fillFacts(app);
   paintScore();
+  talkIgnoreUntil = performance.now() + 300;
 }
 
 function advanceTalk() {
@@ -303,6 +307,9 @@ function showCivic(app, globe, opts = {}) {
     if (won && low) {
       title.textContent = "You won. Our Block lost.";
       title.hidden = false;
+    } else if (won && !low) {
+      title.textContent = "You won. Our Block won.";
+      title.hidden = false;
     } else if (!won && low) {
       title.textContent = "Our Block lost.";
       title.hidden = false;
@@ -313,10 +320,12 @@ function showCivic(app, globe, opts = {}) {
   }
 
   if (line) {
-    line.textContent = low ? civicLoseLine() : civicFailRetryLine();
+    if (won && !low) line.textContent = civicWinLine();
+    else if (low) line.textContent = civicLoseLine();
+    else line.textContent = civicFailRetryLine();
   }
 
-  if (share) share.hidden = !low;
+  if (share) share.hidden = false;
   if (appBtn) appBtn.hidden = !app?.url_planning_app;
   const st = $("civic-share-status");
   if (st) {
@@ -324,6 +333,7 @@ function showCivic(app, globe, opts = {}) {
     st.textContent = "";
   }
   paintScore();
+  civicIgnoreUntil = performance.now() + 500;
   setMode("civic", globe);
 }
 
@@ -396,16 +406,7 @@ function openStack(globe) {
       });
       globe.setProgress?.(all);
     }
-    if (!result.won) {
-      showCivic(current, globe, { won: false });
-      return;
-    }
-    if (result.civicLose || isLowSocial(current, result.spec)) {
-      showCivic(current, globe, { won: true });
-      return;
-    }
-    setMode("walk", globe);
-    globe.overview?.();
+    showCivic(current, globe, { won: !!result.won });
   });
   stacker.start();
   const q = new URLSearchParams(location.search);
@@ -453,8 +454,15 @@ export function boot(root, data) {
     const url = current?.url_planning_app;
     if (url) window.open(url, "_blank", "noopener,noreferrer");
   });
+  $("talk")?.addEventListener("click", (ev) => {
+    if (ev.target.closest(".talk-facts")) return;
+    if (ev.target.closest(".talk-andy")) return;
+    if (performance.now() < talkIgnoreUntil) return;
+    setMode("walk", globe);
+  });
   $("civic")?.addEventListener("click", (ev) => {
     if (ev.target.closest(".civic-card")) return;
+    if (performance.now() < civicIgnoreUntil) return;
     setMode("walk", globe);
     globe.overview?.();
   });
