@@ -1,6 +1,6 @@
 /** Our Block stacker. Crane at the top of the viewport. Pieces are storeys. */
 
-import { challengeSpec, floorKind, isLowSocial } from "./talk.js?v=ob9";
+import { challengeSpec, floorKind, isLowSocial } from "./talk.js?v=ob10";
 import { maxSocial } from "./progress.js?v=ob8";
 import {
   BLOCK_H,
@@ -160,7 +160,7 @@ export function createStacker(canvas, app, onDone) {
     if (endSent) return;
     endSent = true;
     stop();
-    onDone?.(result(won));
+    onDone(result(won));
   }
 
   function startWinFx() {
@@ -177,15 +177,16 @@ export function createStacker(canvas, app, onDone) {
   function finish(won) {
     if (over) return;
     over = true;
+    endWon = won;
     const civic = isLowSocial(app, spec);
     if (won && !civic) {
       phase = "win";
       flash = "STACKED";
       flashT = 3;
       startWinFx();
+      setTimeout(() => sendDone(true), 820);
       return;
     }
-    endWon = won;
     phase = "civic";
     flash = won ? "You won. Our Block lost." : "You Failed.";
     flashT = 0;
@@ -392,7 +393,7 @@ export function createStacker(canvas, app, onDone) {
     const mx = maxHomes || target;
     ctx.fillText(mx ? `${Math.round(winShown)} / ${mx}` : "Homes for the list", W / 2, H * 0.36 + 72);
     ctx.font = "600 13px Nunito, sans-serif";
-    ctx.fillText("Tap to keep walking", W / 2, H * 0.36 + 98);
+    ctx.fillText("Tap", W / 2, H * 0.36 + 98);
     ctx.shadowBlur = 0;
     if (winT >= 3 || skipWin) sendDone(true);
   }
@@ -547,9 +548,12 @@ export function createStacker(canvas, app, onDone) {
     cam = H * 0.42 - topY;
     if (phase === "win") {
       over = true;
+      endWon = true;
       startWinFx();
+      setTimeout(() => sendDone(true), 820);
     } else if (phase === "civic") {
       over = true;
+      endWon = true;
       setTimeout(() => sendDone(true), 360);
     }
     paintHud();
