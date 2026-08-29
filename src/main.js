@@ -1,4 +1,4 @@
-import { loadChallenges, boot } from "./council.js?v=ob16";
+import { loadChallenges, boot } from "./council.js?v=ob17";
 
 const root = document.querySelector("#desk");
 const status = document.querySelector("#boot-status");
