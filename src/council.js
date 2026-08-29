@@ -11,8 +11,8 @@ import {
   civicLoseLine,
   civicFailRetryLine,
   civicWinLine,
-} from "./talk.js?v=ob11";
-import { createStacker } from "./stacker.js?v=ob10";
+} from "./talk.js?v=ob12";
+import { createStacker } from "./stacker.js?v=ob12";
 import { loadProgress, saveChallenge, challengeId, recordOf } from "./progress.js?v=ob8";
 import { unlockAudio } from "./stack-fx.js?v=ob8";
 
@@ -161,7 +161,7 @@ function scoreLine(app) {
   if (!rec?.done) return "";
   const max = rec.max || 0;
   const pct = max ? Math.round((100 * rec.social) / max) : 0;
-  if (max && rec.social >= max) return `Perfect · ${rec.social} / ${max} social homes. Stack again if you like.`;
+  if (max && rec.social >= max) return `Perfect \u00b7 ${rec.social} / ${max} social homes. Stack again if you like.`;
   return `You stacked ${rec.social} / ${max} social homes (${pct}%). Have another go.`;
 }
 
@@ -213,8 +213,8 @@ function showTalk(app) {
   borough = app.borough || "London";
   const spec = challengeSpec(app);
   const talkEl = $("talk");
-  const mad = !!(app.game?.luxury || spec.aff < 0.2);
-  const chuffed = !mad && spec.aff >= 0.35;
+  const mad = !!(app.game?.luxury || (spec.aff != null && spec.aff < 0.2));
+  const chuffed = !mad && spec.aff != null && spec.aff >= 0.35;
   talkEl?.classList.toggle("is-mad", mad);
   talkEl?.classList.toggle("is-chuffed", chuffed);
   lines = talkLines(app);
@@ -255,15 +255,17 @@ function pickSceneApp(data) {
   }
   const kind = q.get("kind");
   if (kind === "luxury") {
-    return list.find((a) => a.game?.luxury || (Number(a.game?.affordablePct) || 0) < 0.12);
+    return list.find((a) => a.game?.luxury || (a.game?.affordablePct != null && Number(a.game.affordablePct) < 0.12));
   }
   if (kind === "social") {
-    return list.find((a) => !a.game?.luxury && (Number(a.game?.affordablePct) || 0) >= 0.35);
+    return list.find((a) => !a.game?.luxury && a.game?.affordablePct != null && Number(a.game.affordablePct) >= 0.35);
   }
   if (kind === "mixed") {
     return list.find((a) => {
-      const aff = Number(a.game?.affordablePct) || 0;
-      return !a.game?.luxury && aff >= 0.12 && aff < 0.35;
+      const aff = a.game?.affordablePct;
+      if (aff == null) return !a.game?.luxury;
+      const n = Number(aff);
+      return !a.game?.luxury && n >= 0.12 && n < 0.35;
     });
   }
   return list.find((a) => a.boroughSlug === "tower-hamlets") || list[0];
