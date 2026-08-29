@@ -1,16 +1,32 @@
 /* Our Block — console overlay on the London map. Desk HUD stays dead. */
 
+html, body {
+  height: 100%;
+  height: 100svh;
+  height: 100dvh;
+  max-height: 100svh;
+  max-height: 100dvh;
+  margin: 0;
+}
+
 body.cb {
   background: #0d1b16;
   color: #e8f0e4;
   overflow: hidden;
+  width: 100%;
+  min-height: 100svh;
+  min-height: 100dvh;
 }
 
 body.cb #desk {
   display: block;
   position: fixed;
   inset: 0;
+  width: 100%;
+  height: 100%;
+  height: 100svh;
   height: 100dvh;
+  max-height: 100svh;
   max-height: 100dvh;
   overflow: hidden;
 }
@@ -36,15 +52,22 @@ body.cb #map-wrap {
   position: fixed;
   inset: 0;
   border: 0;
-  min-height: 100dvh;
+  width: 100%;
+  height: 100%;
+  height: 100svh;
   height: 100dvh;
+  min-height: 100svh;
+  min-height: 100dvh;
+  max-height: 100svh;
+  max-height: 100dvh;
   background: #efece6;
 }
 
 body.cb #gl-map,
-body.cb #gl-map .maplibregl-map {
-  width: 100%;
-  height: 100%;
+body.cb #gl-map .maplibregl-map,
+body.cb #gl-map canvas.maplibregl-canvas {
+  width: 100% !important;
+  height: 100% !important;
 }
 
 body.cb #map-wrap.is-landing #gl-map {
@@ -155,7 +178,7 @@ body.cb #map-wrap.is-walk #gl-map {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  padding: 12px 16px;
+  padding: calc(10px + env(safe-area-inset-top, 0px)) calc(16px + env(safe-area-inset-right, 0px)) 12px calc(16px + env(safe-area-inset-left, 0px));
   pointer-events: none;
   background: linear-gradient(180deg, #0d1b16cc 0%, transparent 100%);
 }
@@ -188,9 +211,9 @@ body.cb #map-wrap.is-walk #gl-map {
 
 #talk {
   position: fixed;
-  left: 12px;
-  right: 12px;
-  bottom: 16px;
+  left: calc(12px + env(safe-area-inset-left, 0px));
+  right: calc(12px + env(safe-area-inset-right, 0px));
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
   z-index: 35;
   display: flex;
   align-items: flex-end;
@@ -205,7 +228,7 @@ body.cb #map-wrap.is-walk #gl-map {
   width: 76px;
   height: 76px;
   object-fit: cover;
-  object-position: 50% 18%;
+  object-position: 50% 28%;
   border: 3px solid #c8f542;
   background: #1a3a22;
   border-radius: 8px;
@@ -259,7 +282,14 @@ body.cb #map-wrap.is-stack.is-2d #gl-map {
   position: fixed;
   inset: 0;
   z-index: 45;
+  width: 100%;
+  height: 100%;
+  height: 100svh;
+  height: 100dvh;
+  max-height: 100svh;
+  max-height: 100dvh;
   background: transparent;
+  overflow: hidden;
 }
 
 #stack[hidden] { display: none !important; }
@@ -269,13 +299,14 @@ body.cb #map-wrap.is-stack.is-2d #gl-map {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  background: rgba(13, 27, 22, 0.2);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  background: rgba(13, 27, 22, 0.08);
 }
 
 #stack-canvas {
-  position: relative;
+  position: absolute;
+  inset: 0;
   z-index: 1;
   display: block;
   width: 100%;
@@ -286,13 +317,13 @@ body.cb #map-wrap.is-stack.is-2d #gl-map {
 #stack-hud {
   z-index: 2;
   position: absolute;
-  top: 28px;
-  left: 12px;
-  right: 12px;
+  top: calc(8px + env(safe-area-inset-top, 0px));
+  left: calc(10px + env(safe-area-inset-left, 0px));
+  right: calc(10px + env(safe-area-inset-right, 0px));
   display: flex;
   justify-content: space-between;
   font-family: "Fredoka", sans-serif;
-  font-size: 16px;
+  font-size: 15px;
   color: #c8f542;
   pointer-events: none;
   text-shadow: 0 2px 0 #0008;
@@ -304,8 +335,8 @@ body.cb #map-wrap.is-stack.is-2d #gl-map {
 #stack-site {
   position: absolute;
   z-index: 2;
-  left: 16px;
-  right: 16px;
+  left: calc(12px + env(safe-area-inset-left, 0px));
+  right: calc(12px + env(safe-area-inset-right, 0px));
   text-align: center;
   margin: 0;
   color: #c5d6bc;
@@ -314,10 +345,10 @@ body.cb #map-wrap.is-stack.is-2d #gl-map {
   text-shadow: 0 1px 2px #000a;
 }
 
-#stack-hint { bottom: 14px; }
+#stack-hint { bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
 
 #stack-site {
-  bottom: 34px;
+  bottom: calc(26px + env(safe-area-inset-bottom, 0px));
   color: #e8f6dc;
   font-family: "Fredoka", sans-serif;
   font-size: 13px;
@@ -325,6 +356,49 @@ body.cb #map-wrap.is-stack.is-2d #gl-map {
 
 body.cb .maplibregl-ctrl-top-left { top: 58px; }
 body.cb .maplibregl-ctrl-attrib { display: none; }
+
+
+/* Our Block: beat desk.css 40vh map on phones. Street must fill the visual viewport. */
+@media (max-width: 980px) {
+  body.cb #desk {
+    display: block !important;
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    height: 100svh !important;
+    height: 100dvh !important;
+    min-height: 100svh !important;
+    max-height: 100dvh !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+  }
+  body.cb #map-wrap,
+  body.cb #map-wrap.is-stack,
+  body.cb #map-wrap.is-walk,
+  body.cb #map-wrap.is-landing {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    height: 100svh !important;
+    height: 100dvh !important;
+    min-height: 100svh !important;
+    min-height: 100dvh !important;
+    max-height: none !important;
+    flex: none !important;
+    border: 0 !important;
+  }
+  body.cb #gl-map,
+  body.cb #gl-map .maplibregl-map,
+  body.cb #gl-map canvas.maplibregl-canvas,
+  body.cb #map-wrap.is-stack #gl-map,
+  body.cb #map-wrap.is-stack #gl-map canvas {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 100% !important;
+  }
+}
 
 #talk.is-mad .talk-face,
 #talk.is-mad .talk-panel {
@@ -346,4 +420,261 @@ body.cb .maplibregl-ctrl-attrib { display: none; }
 
 #talk.is-chuffed .talk-who {
   color: #c8f542;
+}
+
+/* Facts sit ABOVE Andy; scroll independently of Next. */
+#talk {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px));
+}
+
+.talk-andy {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+.talk-facts {
+  max-height: 38vh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  background: #efe8d8f2;
+  color: #1c2418;
+  border: 3px solid #c8f542;
+  border-radius: 6px;
+  padding: 12px 14px;
+  font-size: 17px;
+  line-height: 1.45;
+  box-shadow: 0 6px 0 #0a1810;
+}
+
+.talk-facts[hidden] { display: none !important; }
+
+.talk-facts .facts-kicker {
+  margin: 0 0 6px;
+  font-family: "Fredoka", sans-serif;
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #3a5a22;
+}
+
+.talk-facts .facts-site {
+  margin: 0 0 4px;
+  font-family: "Fredoka", sans-serif;
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: #142016;
+}
+
+.talk-facts .facts-place {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #3a5a22;
+}
+
+.talk-facts .facts-meta,
+.talk-facts .facts-row,
+.talk-facts .facts-ask,
+.talk-facts .facts-impact,
+.talk-facts .facts-note {
+  margin: 0 0 10px;
+}
+
+.talk-facts .facts-label {
+  display: block;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #5a6a48;
+  margin-bottom: 3px;
+}
+
+.talk-facts .facts-aff {
+  font-weight: 700;
+  color: #3a4a18;
+}
+
+.talk-facts .facts-aff.is-low { color: #8a2a10; }
+.talk-facts .facts-aff.is-ok { color: #2a5a18; }
+
+.talk-facts a {
+  color: #1a4a22;
+  font-weight: 700;
+  font-size: 17px;
+}
+
+.talk-facts .facts-constraints {
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.talk-facts .facts-constraints li {
+  margin: 0 0 4px;
+  padding-left: 0;
+}
+
+/* Civic won/lost after a finished stack (win low-social or any fail). */
+#civic {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  background: rgba(13, 27, 22, 0.55);
+}
+
+#civic[hidden] { display: none !important; }
+
+.civic-drop {
+  position: absolute;
+  top: 10vh;
+  left: 12px;
+  right: 12px;
+  z-index: 2;
+  margin: 0;
+  text-align: center;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 700;
+  font-size: clamp(48px, 15vw, 88px);
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+  color: #ff8a8a;
+  text-shadow: 0 4px 0 #3a1010, 0 12px 28px #000a;
+  pointer-events: none;
+}
+
+.civic-drop.is-in {
+  animation: civic-fail-drop 0.78s cubic-bezier(0.22, 1.18, 0.36, 1) both;
+}
+
+@keyframes civic-fail-drop {
+  0% {
+    opacity: 0;
+    transform: translateY(-46vh);
+  }
+  70% {
+    opacity: 1;
+    transform: translateY(10px);
+  }
+  86% {
+    transform: translateY(-5px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .civic-drop.is-in {
+    animation: civic-fail-fade 0.28s ease both;
+  }
+  #civic.is-fail .civic-card {
+    animation: none;
+  }
+}
+
+@keyframes civic-fail-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.civic-card {
+  position: relative;
+  z-index: 3;
+  width: min(440px, 100%);
+  background: #efe8d8;
+  color: #142016;
+  border: 3px solid #c8f542;
+  border-radius: 8px;
+  padding: 16px 16px 18px;
+  box-shadow: 0 10px 0 #0a1810;
+}
+
+#civic.is-fail .civic-card {
+  animation: civic-card-in 0.38s ease 0.7s both;
+}
+
+@keyframes civic-card-in {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.civic-kicker {
+  margin: 0 0 6px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-size: 12px;
+  color: #3a5a22;
+}
+
+.civic-title {
+  margin: 0 0 12px;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 700;
+  font-size: clamp(26px, 7vw, 34px);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  color: #142016;
+}
+
+.civic-andy {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 14px;
+}
+
+.civic-face {
+  width: 64px;
+  height: 64px;
+}
+
+.civic-line {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.4;
+  color: #1c2418;
+}
+
+.civic-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.civic-row .cb-go,
+.civic-row .cb-quiet {
+  flex: 1 1 auto;
+  min-height: 48px;
+  padding: 12px 16px;
+}
+
+.civic-row .cb-quiet {
+  border-color: #3a5a22;
+  color: #1c2418;
+  background: #efe8d8;
+  font-size: 15px;
+}
+
+.civic-status {
+  margin: 10px 0 0;
+  font-size: 14px;
+  color: #3a5a22;
+}
+
+#talk.is-mad .talk-facts {
+  border-color: #ff7a3a;
 }
