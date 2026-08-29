@@ -75,34 +75,38 @@ export function talkLines(app) {
   const g = app?.game || {};
   const spec = challengeSpec(app);
   const lines = [];
-  const ask = clip(g.plainAsk || app?.site_name || "They want to build here.", 150);
+  const ask = clip(g.plainAsk || app?.site_name || "They want to build here.", 140);
   lines.push(ask);
 
-  if (g.luxury || spec.aff < 0.2) {
+  const mad = !!(g.luxury || spec.aff < 0.2);
+
+  if (mad) {
     lines.push(
       spec.units
-        ? `${spec.units} homes on the plans. Almost none for the list — penthouses, not council.`
-        : "Looks like a penthouse job. Not homes for us."
+        ? `Now then. ${spec.units} on the plans, nowt for the list. Penthouse merchants.`
+        : "Now then. Dead luxury, this. Nowt for the list. Penthouse merchants."
     );
+    lines.push("I'm not having it. Brick is homes. Glass is bobbins.");
   } else if (spec.aff >= 0.35) {
     lines.push(
       spec.socialHomes
-        ? `${spec.socialHomes} of these could be social. That's the stack we want.`
-        : "This one hits the 35% line. Lime floors are homes."
+        ? `Ey up. ${spec.socialHomes} proper homes for the list. Sound, that.`
+        : "Ey up. This one actually hits 35%. Proper homes. Sound, that."
     );
+    lines.push("I'm chuffed. Land the brick — that's the stack we want.");
   } else {
-    lines.push(
-      `${Math.round(spec.aff * 100)}% affordable. London Plan wants 35%. The rest is private gold.`
-    );
+    const pct = Math.round(spec.aff * 100);
+    lines.push(`Now then. ${pct}% affordable — bit thin, that. London Plan wants 35%.`);
+    lines.push("Not owt to write home about. Still, stack summat decent.");
   }
 
   if (looksStalled(app) && lines.length < 4) {
-    lines.push("This one's been sitting. Looks stalled — still a challenge if we stack it.");
+    lines.push("Been sat a while, this. Still worth a stack.");
   } else if (lines.length < 4) {
     lines.push(
-      spec.luxury
-        ? `Stack is ${spec.floors} floors. Glass swings faster. Don't treat luxury like a prize.`
-        : `Stack is ${spec.floors} floors. Land the brick. Glass is the trap.`
+      mad
+        ? `${spec.floors} floors. Don't chase the glass, our kid.`
+        : `${spec.floors} floors. Tap to drop. Brick scores, glass doesn't.`
     );
   }
 
