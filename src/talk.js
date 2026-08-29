@@ -98,18 +98,10 @@ export function factsModel(app) {
   const spec = challengeSpec(app);
   const c = g.constraints || {};
   const constraints = [];
-  if (c.conservation) {
-    constraints.push(c.conservationName ? `Conservation area: ${c.conservationName}` : "Conservation area");
-  }
-  if (c.listed) {
-    constraints.push(c.listedName ? `Listed: ${c.listedName}` : "Listed building nearby");
-  }
-  if (c.article4) {
-    constraints.push(c.article4Name ? `Article 4: ${c.article4Name}` : "Article 4 direction");
-  }
-  if (c.brownfield) {
-    constraints.push(c.brownfieldName ? `Brownfield: ${c.brownfieldName}` : "Brownfield");
-  }
+  if (c.conservation) constraints.push("The look of this street is protected.");
+  if (c.listed) constraints.push("There's a historic listed building nearby.");
+  if (c.article4) constraints.push("This street has extra planning rules.");
+  if (c.brownfield) constraints.push("This land has been built on before.");
   return {
     site: app?.site_name || "",
     borough: app?.borough || "",
@@ -132,6 +124,41 @@ export function factsModel(app) {
   };
 }
 
+/** Beginner-friendly sentences for the facts card. Numbers stay on the pack. */
+export function factCopy(app) {
+  const f = factsModel(app);
+  const wardHelps = !!(f.ward && f.site && !String(f.site).toLowerCase().includes(String(f.ward).toLowerCase().split(/\s+/)[0]));
+  const place = [f.borough, wardHelps ? f.ward : ""].filter(Boolean).join(" · ");
+  const homes = [];
+  if (f.units) homes.push(`They want ${f.units} homes.`);
+  if (f.affordableInferred) {
+    homes.push("The application doesn't say how many affordable homes. We use a 20% guess so you can play. It might be more or less.");
+  } else if (f.affordablePct === 0 || f.socialHomes === 0) {
+    homes.push("None of these are for people on the waiting list.");
+  } else if (f.affordablePct >= 35) {
+    homes.push(`About ${f.socialHomes} of them would be social homes — that meets London's 35% ask on bigger schemes.`);
+  } else if (f.units) {
+    homes.push(`About ${f.socialHomes} of them would be social homes.`);
+  }
+  return {
+    site: f.site,
+    place,
+    ask: f.plainAsk,
+    homes,
+    london: `London asks bigger schemes for 35% affordable homes. This one is ${f.affordablePct}%.`,
+    extras: f.constraints.slice(),
+    impact: f.plainImpact,
+    stalled: f.stalled ? "Permission has been sitting a while. They may not have started building yet." : "",
+    linkLabel: f.url ? "See the official application" : "",
+    url: f.url,
+    low: f.affordablePct < 12 || f.socialHomes === 0,
+    ok: f.affordablePct >= 35 && !f.affordableInferred,
+    affordablePct: f.affordablePct,
+    socialHomes: f.socialHomes,
+    units: f.units,
+  };
+}
+
 export function shareOrigin() {
   const host = location.hostname || "";
   if (host.endsWith("here.now")) return location.origin;
@@ -141,7 +168,7 @@ export function shareOrigin() {
 
 export function shareUrl(app) {
   const id = encodeURIComponent(app?.id || app?.lpa_app_no || "");
-  return `${shareOrigin()}/?v=ob8&app=${id}&scene=stack`;
+  return `${shareOrigin()}/?v=ob9&app=${id}&scene=stack`;
 }
 
 export function civicHandles(civic, slug) {
@@ -159,20 +186,18 @@ export function civicHandles(civic, slug) {
 
 export function sharePayload(app, civic) {
   const f = factsModel(app);
+  const copy = factCopy(app);
   const spec = challengeSpec(app);
   const url = shareUrl(app);
   const site = f.site || "This site";
   const borough = f.borough || "London";
-  const ref = f.ref || f.id || "";
-  const homes = spec.units ? `${spec.units} homes` : "Homes not stated on the pack";
-  const affLabel = f.affordableInferred
-    ? `${f.affordablePct}% affordable (inferred)`
-    : `${f.affordablePct}% affordable`;
+  const homes = copy.homes.join(" ") || (spec.units ? `They want ${spec.units} homes.` : "Homes not stated on the pack");
   const impact = clip(f.plainImpact, 180);
   const tags = civicHandles(civic, f.slug).join(" ");
   const text = [
-    `Our Block: ${site}, ${borough}${ref ? ` (${ref})` : ""}`,
-    `${homes}, ${affLabel} / ~${f.socialHomes} social. London Plan asks 35%.`,
+    `Our Block: ${site}, ${borough}`,
+    homes,
+    copy.london,
     impact,
     url,
     tags,
@@ -188,6 +213,10 @@ export function civicLoseLine() {
   return "You stacked it, but this permission does almost nothing for social housing.";
 }
 
+export function civicFailRetryLine() {
+  return "Have another go — this one actually has homes for the list.";
+}
+
 export function talkLines(app) {
   const g = app?.game || {};
   const spec = challengeSpec(app);
@@ -197,16 +226,24 @@ export function talkLines(app) {
 
   const pct = Math.round(spec.aff * 100);
   const inferred = affordableInferred(app);
-  const affLabel = inferred ? `${pct}% affordable (inferred — not stated)` : `${pct}% affordable`;
   const low = isLowSocial(app, spec);
 
-  if (low) {
+  if (inferred) {
+    if (spec.units) {
+      lines.push(`They want ${spec.units} homes. The application doesn't say how many are affordable — we use a 20% guess so you can play.`);
+    } else {
+      lines.push("The application doesn't say how many affordable homes. We use a 20% guess so you can play.");
+    }
+    const who = clip(g.plainImpact, 130);
+    lines.push(who || "Have a look at the card, then we'll stack it.");
+    lines.push("Have a look, then let's get it stacked.");
+  } else if (low) {
     if (spec.units) {
       lines.push(
-        `Right. ${spec.units} homes on the plans, about ${spec.socialHomes} social. London Plan asks 35% on bigger schemes.`
+        `They want ${spec.units} homes. None of these are for people on the waiting list. London asks 35% on bigger schemes.`
       );
     } else {
-      lines.push(`Right. ${affLabel}. London Plan asks 35% on bigger schemes.`);
+      lines.push(`This one is ${pct}% affordable. London asks 35% on bigger schemes.`);
     }
     const who = clip(g.plainImpact, 130);
     lines.push(who || "That leaves people waiting for a social home out of this one.");
@@ -214,18 +251,18 @@ export function talkLines(app) {
   } else if (spec.aff >= 0.35) {
     lines.push(
       spec.units
-        ? `That's about ${spec.socialHomes} social homes from ${spec.units} — it meets the London Plan 35%.`
-        : "This one meets the London Plan 35% for affordable homes."
+        ? `They want ${spec.units} homes. About ${spec.socialHomes} of them would be social homes — that meets London's 35% ask.`
+        : "This one meets London's 35% ask for affordable homes."
     );
     lines.push("Those are the homes that help people on the list.");
     lines.push("Right. Let's get it stacked.");
   } else {
-    lines.push(`${affLabel} — that's a bit thin. London Plan wants 35%.`);
     lines.push(
       spec.units
-        ? `About ${spec.socialHomes} social homes from ${spec.units}. There's a gap versus the Plan.`
-        : "There's a gap versus the 35% the London Plan asks for."
+        ? `They want ${spec.units} homes. About ${spec.socialHomes} of them would be social homes. London asks 35%.`
+        : `This one is ${pct}% affordable. London asks 35%.`
     );
+    lines.push(clip(g.plainImpact, 130) || "There's a gap versus the 35% London asks for.");
     lines.push("Have a look, then let's get it stacked.");
   }
 
