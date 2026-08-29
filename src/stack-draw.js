@@ -220,15 +220,14 @@ export function drawStorey(ctx, b, y, spec, isTop, skipCourses) {
 
 /** Plinth footprint — first floor crops against this, same as later roofs. */
 export function plinthSize(spec, W) {
-  const bw = Math.min(248, Math.round(W * 0.44));
-  let n = bw;
-  if (spec.tight) n = Math.round(n * 0.72);
-  if (spec.brown) n = Math.round(n * 1.12);
-  if (spec.luxury) n = Math.round(n * 0.82);
-  n = Math.max(86, n);
+  let bw = Math.min(248, Math.round(W * 0.44));
+  if (spec.tight) bw = Math.round(bw * 0.72);
+  if (spec.brown) bw = Math.round(bw * 1.12);
+  if (spec.luxury) bw = Math.round(bw * 0.82);
+  bw = Math.max(86, bw);
   const extra = spec.brown ? 18 : spec.tight ? 8 : 12;
-  const pw = n + extra;
-  return { bw: n, extra, pw, px: W / 2 - pw / 2 };
+  const pw = bw + extra;
+  return { bw, extra, pw, px: W / 2 - pw / 2 };
 }
 
 export function drawPlinth(ctx, spec, W, top) {
@@ -269,25 +268,25 @@ export function drawSeamFlash(ctx, x, y, w, alpha) {
   ctx.restore();
 }
 
-export function drawHook(ctx, W, hx, blockTop) {
+export function drawHook(ctx, W, hx, blockTop, top = 40) {
   ctx.fillStyle = "#6a5840";
-  ctx.fillRect(0, 6, W, 10);
+  ctx.fillRect(0, top + 6, W, 10);
   ctx.fillStyle = "#c4a574";
-  ctx.fillRect(0, 6, W, 7);
+  ctx.fillRect(0, top + 6, W, 7);
   ctx.fillStyle = "#8a7348";
-  ctx.fillRect(0, 13, W, 2);
+  ctx.fillRect(0, top + 13, W, 2);
   ctx.fillStyle = "#2a2418";
-  for (let x = 18; x < W; x += 46) ctx.fillRect(x, 7, 3, 6);
+  for (let x = 18; x < W; x += 46) ctx.fillRect(x, top + 7, 3, 6);
   ctx.fillStyle = "#e0c888";
-  ctx.fillRect(hx - 18, 3, 36, 16);
+  ctx.fillRect(hx - 18, top + 3, 36, 16);
   ctx.fillStyle = "#8a7040";
-  ctx.fillRect(hx - 18, 3, 36, 3);
+  ctx.fillRect(hx - 18, top + 3, 36, 3);
   ctx.fillStyle = "#2a2418";
-  ctx.fillRect(hx - 3, 8, 6, 10);
+  ctx.fillRect(hx - 3, top + 8, 6, 10);
   ctx.strokeStyle = "#f2e6c4";
   ctx.lineWidth = 1.6;
   ctx.beginPath();
-  ctx.moveTo(hx, 18);
+  ctx.moveTo(hx, top + 18);
   ctx.lineTo(hx, blockTop);
   ctx.stroke();
   ctx.strokeStyle = "#f0d090";
