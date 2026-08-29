@@ -180,3 +180,116 @@ function plainWho(app, units, affPct, luxury) {
   if (units < 10) return "Jordan wants any extra flat. People waiting for affordable homes get nothing from a scheme this small (it dodges the 35% rule).";
   return "Amira, Jordan and Sam are watching the affordable slice. Neighbours are watching the massing.";
 }
+
+async function pldSearch(body) {
+  const res = await fetch(PLD, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      "User-Agent": "planning-desk/1.0 (open data snapshot; OGL)",
+      "X-API-AllowRequest": "be2rmRnt&",
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error(`PLD ${res.status}: ${t.slice(0, 240)}`);
+  }
+  return res.json();
+}
+
+function pldQuery(lpaName) {
+  return {
+    bool: {
+      must: [
+        { match: { lpa_name: lpaName } },
+        { exists: { field: "centroid" } },
+        {
+          bool: {
+            should: [
+              { match_phrase: { development_type: "Minor dwellings" } },
+              { match_phrase: { development_type: "Major dwellings" } },
+              { match_phrase: { description: "Use Class C3" } },
+              { match_phrase: { description: "residential units" } },
+              { match_phrase: { description: "residential development" } },
+              { match: { description: "dwellings" } },
+              { match: { description: "flats" } },
+              { match: { description: "homes" } },
+              { match: { description: "apartments" } },
+              { match_phrase: { description: "mixed use" } },
+              { match_phrase: { description: "mixed-use" } },
+              { match: { description: "affordable" } },
+            ],
+            minimum_should_match: 1,
+          },
+        },
+      ],
+      must_not: [
+        { match: { application_type: "Householder" } },
+        { match_phrase: { development_type: "Other house holder developments" } },
+      ],
+    },
+  };
+}
+
+function hitToApp(h, seen) {
+  const src = h._source || {};
+  const id = src.id || h._id;
+  if (!id || seen.has(id)) return null;
+  seen.add(id);
+  const lat = toNum(src.centroid?.lat);
+  const lon = toNum(src.centroid?.lon);
+  if (lat == null || lon == null) return null;
+  return {
+    id,
+    lpa_app_no: src.lpa_app_no,
+    ward: (src.ward || "").replace(/\s*\(Pre May 2022\)\s*/i, "").trim() || src.ward,
+    description: src.description,
+    application_type_full: src.application_type_full,
+    application_type: src.application_type,
+    development_type: src.development_type,
+    site_name: src.site_name,
+    postcode: src.postcode,
+    url_planning_app: src.url_planning_app,
+    valid_date: src.valid_date,
+    centroid: { lat, lon },
+    geometry: { type: "Point", coordinates: [lon, lat] },
+  };
+}
+
+async function fetchApps(lpaName) {
+  const seen = new Set();
+  const apps = [];
+  let total = 0;
+  const query = pldQuery(lpaName);
+  const majorQuery = {
+    bool: {
+      must: [
+        { match: { lpa_name: lpaName } },
+        { exists: { field: "centroid" } },
+        { match_phrase: { development_type: "Major dwellings" } },
+      ],
+      must_not: [
+        { match: { application_type: "Householder" } },
+      ],
+    },
+  };
+  for (const [q, size] of [[query, 100], [majorQuery, 50]]) {
+    const page = await pldSearch({
+      size,
+      from: 0,
+      track_total_hits: true,
+      query: q,
+      sort: [{ valid_date: { order: "desc", unmapped_type: "date" } }],
+      _source: SOURCE_FIELDS,
+    });
+    total = Math.max(total, page.hits?.total?.value ?? 0);
+    for (const h of page.hits?.hits ?? []) {
+      const app = hitToApp(h, seen);
+      if (app) apps.push(app);
+    }
+    await sleep(180);
+  }
+  return { total, apps };
+}
