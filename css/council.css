@@ -211,17 +211,21 @@ body.cb #map-wrap.is-walk #gl-map {
 
 #talk {
   position: fixed;
-  left: calc(12px + env(safe-area-inset-left, 0px));
-  right: calc(12px + env(safe-area-inset-right, 0px));
-  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  inset: 0;
   z-index: 35;
   display: flex;
-  align-items: flex-end;
-  gap: 10px;
-  pointer-events: none;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px;
+  padding-left: calc(12px + env(safe-area-inset-left, 0px));
+  padding-right: calc(12px + env(safe-area-inset-right, 0px));
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  background: rgba(13, 27, 22, 0.55);
+  pointer-events: auto;
 }
 
-#talk:not([hidden]) { pointer-events: auto; }
 #talk[hidden] { display: none !important; }
 
 .talk-face {
@@ -422,12 +426,12 @@ body.cb .maplibregl-ctrl-attrib { display: none; }
   color: #c8f542;
 }
 
-/* Facts sit ABOVE Andy; scroll independently of Next. */
+/* Facts sit ABOVE Andy; scroll independently of Next. Full-screen so map taps dismiss. */
 #talk {
   flex-direction: column;
   align-items: stretch;
+  justify-content: flex-end;
   gap: 8px;
-  max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px));
 }
 
 .talk-andy {
