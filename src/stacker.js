@@ -400,7 +400,7 @@ export function createStacker(canvas, app, onDone) {
 
   function drawLose() {
     ctx.fillStyle = "rgba(13,27,22,0.4)";
-    ctx.fillRect(0, 0, W, H * 0.38, W, 72);
+    ctx.fillRect(0, H * 0.38, W, 72);
     ctx.fillStyle = "#ff8a8a";
     ctx.font = "700 28px Fredoka, sans-serif";
     ctx.textAlign = "center";
