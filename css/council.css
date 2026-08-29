@@ -263,6 +263,18 @@ body.cb #map-wrap.is-walk #gl-map {
   line-height: 1.35;
   color: #e8f6dc;
   min-height: 2.7em;
+  max-height: none;
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  text-overflow: unset;
+}
+
+.talk-panel {
+  overflow: visible;
+  height: auto;
+  max-height: none;
 }
 
 .talk-row { display: flex; gap: 8px; justify-content: flex-end; }
@@ -321,7 +333,7 @@ body.cb #map-wrap.is-stack.is-2d #gl-map {
 #stack-hud {
   z-index: 2;
   position: absolute;
-  top: calc(8px + env(safe-area-inset-top, 0px));
+  top: calc(22px + env(safe-area-inset-top, 0px));
   left: calc(10px + env(safe-area-inset-left, 0px));
   right: calc(10px + env(safe-area-inset-right, 0px));
   display: flex;
@@ -331,6 +343,10 @@ body.cb #map-wrap.is-stack.is-2d #gl-map {
   color: #c8f542;
   pointer-events: none;
   text-shadow: 0 2px 0 #0008;
+}
+
+#stack-hud, #stack-hint, #stack-site, #stack-haze {
+  pointer-events: none;
 }
 
 #stack-hp { color: #ff6b6b; letter-spacing: 2px; }
@@ -608,7 +624,7 @@ body.cb .maplibregl-ctrl-attrib { display: none; }
 }
 
 #civic.is-fail .civic-card {
-  animation: civic-card-in 0.38s ease 0.7s both;
+  animation: civic-card-in 0.32s ease 0.05s both;
 }
 
 @keyframes civic-card-in {
