@@ -100,3 +100,83 @@ function parseAffordable(desc, units) {
   }
   return { affordablePct: null, affordableSource: "not-stated" };
 }
+
+function isLuxury(app, units) {
+  const t = `${app.description || ""} ${app.ward || ""}`.toLowerCase();
+  if (/luxury|penthouse|private homes|riverside|build to rent/.test(t) && (units || 0) >= 20) return true;
+  if ((units || 0) >= 150) return true;
+  const storey = (app.description || "").match(/(\d{1,2})-storey/i);
+  if (storey && parseInt(storey[1], 10) >= 15) return true;
+  return false;
+}
+
+function isPlayable(app, meta) {
+  const type = (app.application_type_full || app.application_type || "").toLowerCase();
+  const desc = (app.description || "").toLowerCase();
+  if (/householder/.test(type)) return false;
+  if (/lawful development|non-material|discharge|approval of details|prior approval|advertisement|scoping|screening/.test(type + desc)) {
+    if (/scoping opinion|screening opinion/.test(desc)) return false;
+    if (/non-material amendment/.test(desc)) return false;
+    if (/lawful development/.test(type)) return false;
+  }
+  if (meta.eiaContext && /scoping opinion|screening opinion/.test(desc)) return false;
+  const residential =
+    /dwelling|residential|flat|home|c3|mixed[- ]use|apartment|hmo/.test(desc) ||
+    /dwellings/i.test(app.development_type || "");
+  if (!residential) return false;
+  if (meta.units == null || meta.units < 1) return false;
+  return true;
+}
+
+function emptyConstraints() {
+  return {
+    conservation: false,
+    conservationName: null,
+    listed: false,
+    listedName: null,
+    article4: false,
+    article4Name: null,
+    brownfield: false,
+    brownfieldName: null,
+    brownfieldHectares: null,
+  };
+}
+
+function plainAsk(app, units) {
+  const t = (app.description || "").replace(/\s+/g, " ").trim();
+  if (/variation of (a )?condition|already have permission|increase the number of private|reduce the number of affordable/i.test(t)) {
+    return `They already have permission. They want to change the deal (${units} homes on the books).`;
+  }
+  if (/demolition|knock|redevelopment of the site/i.test(t)) {
+    return `Knock what's there and put up ${units} home${units === 1 ? "" : "s"}.`;
+  }
+  if (/conversion|change of use/i.test(t)) {
+    return `Convert the building into ${units} home${units === 1 ? "" : "s"}.`;
+  }
+  return `Build ${units} home${units === 1 ? "" : "s"} here.`;
+}
+
+function plainImpact(app, units, affPct, place, completions) {
+  const bits = [];
+  if (affPct == null) {
+    bits.push(`${units} home${units === 1 ? "" : "s"}. The public record does not state a social-housing figure.`);
+  } else {
+    bits.push(`${units} home${units === 1 ? "" : "s"}, ${Math.round(affPct * 100)}% affordable vs London Plan 35%.`);
+    if (units >= 10 && affPct < 0.35) bits.push("This is a major under the usual 35%.");
+  }
+  if (place?.schoolHalo && place.schoolName) bits.push(`${place.schoolName} is within 400 m (not a legal catchment).`);
+  if (place?.hospitalSweet && place.hospitalName) bits.push(`${place.hospitalName} is in the 400–1,200 m sweet spot.`);
+  if (place?.hospitalTooClose && place.hospitalName) bits.push(`${place.hospitalName} is very close — ambulances and noise.`);
+  if (place?.hospitalFar && place.hospitalName) bits.push(`${place.hospitalName} is a hike.`);
+  if (place?.highCrime) bits.push(`Street-crime count in May 2026 is high (${place.crimeCount} within 400 m, locations approximate).`);
+  if (completions) bits.push(`This borough's 2023–24 affordable pace was ${completions}.`);
+  return bits.join(" ");
+}
+
+function plainWho(app, units, affPct, luxury) {
+  if (luxury) return "Kit likes the pipeline. Amira and Jordan need the affordable slice to be real. Sam wants a school-run that works.";
+  if (affPct == null) return "Amira, Jordan and Sam are watching the affordable slice. Neighbours are watching the massing.";
+  if (units >= 10 && affPct < 0.35) return "Jordan wants the extra flats. Amira needs them to be affordable. Neighbours get a bigger building.";
+  if (units < 10) return "Jordan wants any extra flat. People waiting for affordable homes get nothing from a scheme this small (it dodges the 35% rule).";
+  return "Amira, Jordan and Sam are watching the affordable slice. Neighbours are watching the massing.";
+}
