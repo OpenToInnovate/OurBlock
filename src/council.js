@@ -1,6 +1,6 @@
 /** Our Block boot: landing → walk pins → talk → stacker. Desk stays dead. */
 
-import { createGlobe } from "./globe.js?v=ob24";
+import { createGlobe } from "./globe.js?v=ob25";
 import {
   talkLines,
   challengeSpec,
