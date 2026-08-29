@@ -393,3 +393,42 @@ function nearestSchool(lat, lon, schools) {
   }
   return best;
 }
+
+async function fetchUkhpi(slug) {
+  const tries = [slug];
+  if (slug === "hammersmith-and-fulham") tries.push("hammersmith");
+  if (slug === "kensington-and-chelsea") tries.push("kensington");
+  if (slug.endsWith("-upon-thames")) tries.push(slug.replace("-upon-thames", ""));
+  for (const s of tries) {
+    const listUrl = `https://landregistry.data.gov.uk/data/ukhpi/region/${s}.json`;
+    try {
+      const listRes = await fetch(listUrl, { headers: { Accept: "application/json", "User-Agent": "planning-desk/1.0" } });
+      if (!listRes.ok) continue;
+      const list = await listRes.json();
+      const items = list?.result?.items || [];
+      const latestUri = String(items[0] || "");
+      const month = latestUri.match(/month\/(\d{4}-\d{2})/)?.[1];
+      if (!month) continue;
+      const monthUrl = `http://landregistry.data.gov.uk/data/ukhpi/region/${s}/month/${month}.json`;
+      const monthRes = await fetch(monthUrl, { headers: { Accept: "application/json", "User-Agent": "planning-desk/1.0" } });
+      if (!monthRes.ok) continue;
+      const body = await monthRes.json();
+      const t = body?.result?.primaryTopic || {};
+      return {
+        month,
+        averagePrice: t.averagePrice,
+        averagePriceFlatMaisonette: t.averagePriceFlatMaisonette,
+        percentageAnnualChange: t.percentageAnnualChange,
+        percentageChange: t.percentageChange,
+        housePriceIndex: t.housePriceIndex,
+        source: monthUrl,
+        licence: "OGL v3.0",
+        note: `UK House Price Index, ${month}.`,
+        slug: s,
+      };
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
