@@ -169,7 +169,7 @@ export function factCopy(app) {
   const f = factsModel(app);
   const src = f.source;
   const wardHelps = !!(f.ward && f.site && !String(f.site).toLowerCase().includes(String(f.ward).toLowerCase().split(/\s+/)[0]));
-  const place = [f.borough, wardHelps ? f.ward : ""].filter(Boolean).join(" \u00b7 ");
+  const place = [f.borough, wardHelps ? f.ward : ""].filter(Boolean).join(" · ");
   const homes = [];
   if (f.units) homes.push(`They want ${f.units} homes.`);
   if (/refused/i.test(src)) {
