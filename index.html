@@ -15,8 +15,8 @@
     <link rel="preconnect" href="https://unpkg.com" />
     <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin />
     <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css" />
-    <link rel="stylesheet" href="./css/desk.css?v=ob3" />
-    <link rel="stylesheet" href="./css/council.css?v=ob3" />
+    <link rel="stylesheet" href="./css/desk.css?v=ob5" />
+    <link rel="stylesheet" href="./css/council.css?v=ob5" />
   </head>
   <body class="cb">
     <div id="desk">
@@ -42,9 +42,9 @@
     </header>
 
     <aside id="talk" hidden>
-      <img id="talk-face" class="talk-face" src="./assets/faces/nurse.png" alt="" width="72" height="72" />
+      <img id="talk-face" class="talk-face" src="./assets/faces/nurse.png" alt="Andy" width="72" height="72" />
       <div class="talk-panel">
-        <p class="talk-who">Amira</p>
+        <p class="talk-who">Andy</p>
         <p id="talk-line" class="talk-line"></p>
         <div class="talk-row">
           <button type="button" id="talk-next" class="cb-quiet">Next</button>
@@ -68,6 +68,6 @@
     <p id="boot-status">Loading London&hellip;</p>
     <script>if (/[?&]scene=stack/.test(location.search)) { var el = document.getElementById("landing"); if (el) el.hidden = true; var w = document.getElementById("map-wrap"); if (w) w.classList.remove("is-landing"); }</script>
     <script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
-    <script type="module" src="./src/main.js?v=ob3"></script>
+    <script type="module" src="./src/main.js?v=ob5"></script>
   </body>
 </html>
