@@ -1,15 +1,23 @@
-/** Per-challenge stack progress. localStorage key our-block-progress. */
+/** Sitting-only challenge progress. RAM, not a save-game. Wipes our-block-progress on boot. */
 
 const KEY = "our-block-progress";
 
-export function loadProgress() {
+let progress = {};
+let wiped = false;
+
+function wipeSaved() {
+  if (wiped) return;
+  wiped = true;
   try {
-    const raw = localStorage.getItem(KEY);
-    const data = raw ? JSON.parse(raw) : {};
-    return data && typeof data === "object" ? data : {};
-  } catch {
-    return {};
-  }
+    localStorage.removeItem(KEY);
+  } catch (_) {}
+}
+
+wipeSaved();
+
+export function loadProgress() {
+  wipeSaved();
+  return progress;
 }
 
 export function challengeId(app) {
@@ -25,9 +33,8 @@ export function maxSocial(spec) {
 }
 
 export function saveChallenge(id, rec) {
-  if (!id) return loadProgress();
-  const all = loadProgress();
-  const prev = all[id] || {};
+  if (!id) return progress;
+  const prev = progress[id] || {};
   const next = {
     social: Number(rec.social) || 0,
     max: Number(rec.max) || 0,
@@ -39,14 +46,11 @@ export function saveChallenge(id, rec) {
     next.rubble = prev.rubble ?? next.rubble;
     if (prev.max > next.max) next.max = prev.max;
   }
-  all[id] = next;
-  try {
-    localStorage.setItem(KEY, JSON.stringify(all));
-  } catch (_) {}
-  return all;
+  progress[id] = next;
+  return progress;
 }
 
 export function recordOf(id) {
   if (!id) return null;
-  return loadProgress()[id] || null;
+  return progress[id] || null;
 }
