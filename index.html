@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin />
     <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css" />
     <link rel="stylesheet" href="./css/desk.css?v=ob8" />
-    <link rel="stylesheet" href="./css/council.css?v=ob12" />
+    <link rel="stylesheet" href="./css/council.css?v=ob13" />
   </head>
   <body class="cb">
     <div id="desk">
@@ -82,12 +82,12 @@
         <span id="stack-floors">0 / 0</span>
       </div>
       <p id="stack-site"></p>
-      <p id="stack-hint">Tap to drop · brick is homes · glass is the trap</p>
+      <p id="stack-hint" hidden>Tap to drop · brick is homes · glass is the trap</p>
     </div>
 
     <p id="boot-status">Loading London…</p>
     <script>if (/[?&]scene=stack/.test(location.search)) { var el = document.getElementById("landing"); if (el) el.hidden = true; var w = document.getElementById("map-wrap"); if (w) w.classList.remove("is-landing"); }</script>
     <script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
-    <script type="module" src="./src/main.js?v=ob12"></script>
+    <script type="module" src="./src/main.js?v=ob13"></script>
   </body>
 </html>
