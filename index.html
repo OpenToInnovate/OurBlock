@@ -15,8 +15,8 @@
     <link rel="preconnect" href="https://unpkg.com" />
     <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin />
     <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css" />
-    <link rel="stylesheet" href="./css/desk.css?v=ob7" />
-    <link rel="stylesheet" href="./css/council.css?v=ob7" />
+    <link rel="stylesheet" href="./css/desk.css?v=ob8" />
+    <link rel="stylesheet" href="./css/council.css?v=ob8" />
   </head>
   <body class="cb">
     <div id="desk">
@@ -42,14 +42,34 @@
     </header>
 
     <aside id="talk" hidden>
-      <img id="talk-face" class="talk-face" src="./assets/faces/andy.png" alt="Andy" width="72" height="72" />
-      <div class="talk-panel">
-        <p class="talk-who">Andy</p>
-        <p id="talk-line" class="talk-line"></p>
-        <div class="talk-row">
-          <button type="button" id="talk-next" class="cb-quiet">Next</button>
-          <button type="button" id="talk-stack" class="cb-go" hidden>STACK</button>
+      <div id="facts" class="talk-facts" hidden></div>
+      <div class="talk-andy">
+        <img id="talk-face" class="talk-face" src="./assets/faces/andy.png" alt="Andy" width="72" height="72" />
+        <div class="talk-panel">
+          <p class="talk-who">Andy</p>
+          <p id="talk-line" class="talk-line"></p>
+          <div class="talk-row">
+            <button type="button" id="talk-next" class="cb-quiet">Next</button>
+            <button type="button" id="talk-stack" class="cb-go" hidden>STACK</button>
+          </div>
         </div>
+      </div>
+    </aside>
+
+    <aside id="civic" hidden>
+      <div class="civic-card">
+        <p class="civic-kicker">Our Block</p>
+        <h2 class="civic-title">You won. Our Block lost.</h2>
+        <div class="civic-andy">
+          <img class="talk-face civic-face" src="./assets/faces/andy.png" alt="Andy" width="64" height="64" />
+          <p id="civic-line" class="civic-line"></p>
+        </div>
+        <div class="civic-row">
+          <button type="button" id="civic-share" class="cb-go">Post your stance</button>
+          <button type="button" id="civic-app" class="cb-quiet">The application</button>
+          <button type="button" id="civic-map" class="cb-quiet">Back to map</button>
+        </div>
+        <p id="civic-share-status" class="civic-status" hidden></p>
       </div>
     </aside>
 
@@ -68,6 +88,6 @@
     <p id="boot-status">Loading London…</p>
     <script>if (/[?&]scene=stack/.test(location.search)) { var el = document.getElementById("landing"); if (el) el.hidden = true; var w = document.getElementById("map-wrap"); if (w) w.classList.remove("is-landing"); }</script>
     <script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
-    <script type="module" src="./src/main.js?v=ob7"></script>
+    <script type="module" src="./src/main.js?v=ob8"></script>
   </body>
 </html>
