@@ -3,7 +3,7 @@
 function clip(s, n) {
   const t = String(s || "").replace(/\s+/g, " ").trim();
   if (t.length <= n) return t;
-  return t.slice(0, n - 1).replace(/\s+\S*$/, "") + "…";
+  return t.slice(0, n - 1).replace(/\s+\S*$/, "") + "...";
 }
 
 export function parseStoreys(text) {
@@ -35,22 +35,38 @@ export function looksStalled(app) {
   return !!(old || vary);
 }
 
+/** Null when the public record does not state a social/affordable figure. */
+export function affordablePctOf(app) {
+  const g = app?.game || {};
+  const src = String(g.affordableSource || "");
+  if (/not-stated|unspecified-20|inferred|london-plan-default/i.test(src)) return null;
+  if (g.affordablePct == null || g.affordablePct === "") return null;
+  const n = Number(g.affordablePct);
+  return Number.isFinite(n) ? n : null;
+}
+
+export function affordableUnknown(app) {
+  return affordablePctOf(app) == null;
+}
+
 export function challengeSpec(app) {
   const g = app?.game || {};
   const c = g.constraints || {};
   const units = Math.max(0, Number(g.units) || 0);
-  const aff = Number(g.affordablePct) || 0;
-  const luxury = !!g.luxury || aff < 0.12;
+  const aff = affordablePctOf(app);
+  const unknown = aff == null;
+  const luxury = !!g.luxury;
   const floors = floorsFor(app);
-  const limeShare = luxury ? Math.min(0.2, aff) : aff >= 0.35 ? Math.max(0.35, aff) : aff;
-  const limeFloors = Math.max(aff > 0 ? 1 : 0, Math.round(floors * limeShare));
+  const limeShare = unknown ? 0 : luxury ? Math.min(0.2, aff) : aff >= 0.35 ? Math.max(0.35, aff) : aff;
+  const limeFloors = unknown ? 0 : Math.max(aff > 0 ? 1 : 0, Math.round(floors * limeShare));
   const tight = !!(c.conservation || c.listed || c.article4);
   const brown = !!c.brownfield;
-  const socialHomes = Math.round(units * aff);
-  const homesPerLime = limeFloors ? Math.max(1, Math.round((socialHomes || limeFloors) / limeFloors)) : 0;
+  const socialHomes = unknown || !units ? null : Math.round(units * aff);
+  const homesPerLime = limeFloors ? Math.max(1, Math.round(((socialHomes || limeFloors) / limeFloors))) : 0;
   return {
     floors,
     aff,
+    unknown,
     luxury,
     tight,
     brown,
@@ -62,19 +78,21 @@ export function challengeSpec(app) {
 }
 
 export function floorKind(i, spec) {
+  if (spec.unknown && !spec.luxury) return "mixed";
   const socialFloor = spec.luxury
     ? spec.limeFloors > 0 && i === 0
     : i < spec.limeFloors;
   if (socialFloor) return "social";
-  if (spec.luxury || spec.aff < 0.12) return "luxury";
+  if (spec.luxury || (spec.aff != null && spec.aff < 0.12)) return "luxury";
   return "mixed";
 }
 
-/** Won the stack but the permission is 0 / super-low social. */
+/** Won the stack but the permission is 0 / super-low social. Unknown is not a luxury trap. */
 export function isLowSocial(app, spec) {
   const s = spec || challengeSpec(app);
+  if (s.unknown || s.aff == null) return false;
   const g = app?.game || {};
-  const aff = Number(s.aff) || 0;
+  const aff = s.aff;
   const socialHomes = Number(s.socialHomes) || 0;
   const luxury = !!(g.luxury || s.luxury);
   return aff === 0 || aff < 0.12 || socialHomes === 0 || (luxury && aff < 0.2);
@@ -82,14 +100,19 @@ export function isLowSocial(app, spec) {
 
 export function isDecentSocial(app, spec) {
   const s = spec || challengeSpec(app);
+  if (s.unknown || s.aff == null) return false;
   const g = app?.game || {};
-  const aff = Number(s.aff) || 0;
+  const aff = s.aff;
   const luxuryZero = !!(g.luxury || s.luxury) && aff < 0.2;
   return aff >= 0.2 && !luxuryZero;
 }
 
 function affordableInferred(app) {
   return /unspecified-20|inferred/i.test(app?.game?.affordableSource || "");
+}
+
+function affordableNotStated(app) {
+  return /not-stated/i.test(app?.game?.affordableSource || "") || affordablePctOf(app) == null;
 }
 
 /** Facts drawn only from pack fields. No invented numbers. */
@@ -102,6 +125,7 @@ export function factsModel(app) {
   if (c.listed) constraints.push("There's a historic listed building nearby.");
   if (c.article4) constraints.push("This street has extra planning rules.");
   if (c.brownfield) constraints.push("This land has been built on before.");
+  const unknown = spec.unknown || spec.aff == null;
   return {
     site: app?.site_name || "",
     borough: app?.borough || "",
@@ -109,9 +133,10 @@ export function factsModel(app) {
     ref: app?.lpa_app_no || "",
     type: app?.application_type_full || "",
     units: spec.units,
-    affordablePct: Math.round(spec.aff * 100),
+    affordablePct: unknown ? null : Math.round(spec.aff * 100),
+    affordableUnknown: unknown,
     affordableInferred: affordableInferred(app),
-    socialHomes: spec.socialHomes,
+    socialHomes: unknown ? null : spec.socialHomes,
     luxury: !!g.luxury,
     londonPlan: 35,
     constraints,
@@ -128,34 +153,40 @@ export function factsModel(app) {
 export function factCopy(app) {
   const f = factsModel(app);
   const wardHelps = !!(f.ward && f.site && !String(f.site).toLowerCase().includes(String(f.ward).toLowerCase().split(/\s+/)[0]));
-  const place = [f.borough, wardHelps ? f.ward : ""].filter(Boolean).join(" · ");
+  const place = [f.borough, wardHelps ? f.ward : ""].filter(Boolean).join(" - ");
   const homes = [];
   if (f.units) homes.push(`They want ${f.units} homes.`);
-  if (f.affordableInferred) {
+  if (f.affordableUnknown || affordableNotStated(app)) {
+    homes.push("We could not find a social-housing figure on the public record. The application doesn't say.");
+  } else if (f.affordableInferred) {
     homes.push("The application doesn't say how many affordable homes. We use a 20% guess so you can play. It might be more or less.");
   } else if (f.affordablePct === 0 || f.socialHomes === 0) {
     homes.push("None of these are for people on the waiting list.");
   } else if (f.affordablePct >= 35) {
-    homes.push(`About ${f.socialHomes} of them would be social homes — that meets London's 35% ask on bigger schemes.`);
+    homes.push(`About ${f.socialHomes} of them would be social homes - that meets London's 35% ask on bigger schemes.`);
   } else if (f.units) {
     homes.push(`About ${f.socialHomes} of them would be social homes.`);
   }
+  const london = f.affordableUnknown
+    ? "London asks bigger schemes for 35% affordable homes. This application doesn't say what it would provide."
+    : `London asks bigger schemes for 35% affordable homes. This one is ${f.affordablePct}%.`;
   return {
     site: f.site,
     place,
     ask: f.plainAsk,
     homes,
-    london: `London asks bigger schemes for 35% affordable homes. This one is ${f.affordablePct}%.`,
+    london,
     extras: f.constraints.slice(),
     impact: f.plainImpact,
     stalled: f.stalled ? "Permission has been sitting a while. They may not have started building yet." : "",
     linkLabel: f.url ? "See the official application" : "",
     url: f.url,
-    low: f.affordablePct < 12 || f.socialHomes === 0,
-    ok: f.affordablePct >= 35 && !f.affordableInferred,
+    low: !f.affordableUnknown && (f.affordablePct < 12 || f.socialHomes === 0),
+    ok: !f.affordableUnknown && f.affordablePct >= 35 && !f.affordableInferred,
     affordablePct: f.affordablePct,
     socialHomes: f.socialHomes,
     units: f.units,
+    unknown: f.affordableUnknown,
   };
 }
 
@@ -168,7 +199,7 @@ export function shareOrigin() {
 
 export function shareUrl(app) {
   const id = encodeURIComponent(app?.id || app?.lpa_app_no || "");
-  return `${shareOrigin()}/?v=ob11&app=${id}&scene=stack`;
+  return `${shareOrigin()}/?v=ob12&app=${id}&scene=stack`;
 }
 
 export function civicHandles(civic, slug) {
@@ -194,28 +225,32 @@ export function sharePayload(app, civic) {
   const n = copy.units;
   const x = copy.socialHomes;
   const y = copy.affordablePct;
-  // Stance follows the APPLICATION civic outcome, not the player's stack skill.
-  const civicWin = !!(copy.ok || y >= 35);
+  const civicWin = !!(copy.ok || (y != null && y >= 35));
   let stance;
-  if (civicWin) {
+  if (copy.unknown || y == null) {
     const nums = n
-      ? `About ${x} of ${n} homes would be social (${y}%) — that meets London's 35% ask.`
+      ? `${n} homes. We could not find a social-housing figure on the public record.`
+      : "We could not find a social-housing figure on the public record.";
+    stance = `I played Our Block on ${site}, ${borough}. ${nums} London asks 35% on bigger schemes. I'd be grateful if you would look at the social-housing impact - does this do enough for people on the waiting list? You can try this application here: ${url}`;
+  } else if (civicWin) {
+    const nums = n
+      ? `About ${x} of ${n} homes would be social (${y}%) - that meets London's 35% ask.`
       : `This one meets London's 35% ask (${y}%).`;
     stance = `I played Our Block on ${site}, ${borough}. ${nums} A good plan for the list. Thank you for a plan with real social homes. You can try this application here: ${url}`;
   } else if (y === 0 || x === 0) {
     const nums = n
       ? `${n} homes, none for the waiting list (0% affordable).`
       : `None of these homes are for the waiting list (0% affordable).`;
-    stance = `I played Our Block on ${site}, ${borough}. ${nums} London asks 35% on bigger schemes. I'd be grateful if you would look at the social-housing impact — does this do enough for people on the waiting list? You can try this application here: ${url}`;
+    stance = `I played Our Block on ${site}, ${borough}. ${nums} London asks 35% on bigger schemes. I'd be grateful if you would look at the social-housing impact - does this do enough for people on the waiting list? You can try this application here: ${url}`;
   } else {
     const nums = n
       ? `About ${x} of ${n} homes would be social (${y}%).`
       : `This one is ${y}% affordable.`;
-    stance = `I played Our Block on ${site}, ${borough}. ${nums} London asks 35% on bigger schemes. I'd be grateful if you would look at the social-housing impact — does this do enough for people on the waiting list? You can try this application here: ${url}`;
+    stance = `I played Our Block on ${site}, ${borough}. ${nums} London asks 35% on bigger schemes. I'd be grateful if you would look at the social-housing impact - does this do enough for people on the waiting list? You can try this application here: ${url}`;
   }
   const text = [stance, tags].filter(Boolean).join("\n");
   return {
-    title: `Our Block — ${site}`,
+    title: `Our Block - ${site}`,
     text,
     url,
   };
@@ -226,7 +261,7 @@ export function civicLoseLine() {
 }
 
 export function civicFailRetryLine() {
-  return "Have another go — this one actually has homes for the list.";
+  return "Have another go - this one actually has homes for the list.";
 }
 
 export function civicWinLine() {
@@ -240,15 +275,15 @@ export function talkLines(app) {
   const ask = clip(g.plainAsk || app?.site_name || "They want to build here.", 140);
   lines.push(ask);
 
-  const pct = Math.round(spec.aff * 100);
-  const inferred = affordableInferred(app);
+  const unknown = spec.unknown || spec.aff == null;
+  const pct = unknown ? null : Math.round(spec.aff * 100);
   const low = isLowSocial(app, spec);
 
-  if (inferred) {
+  if (unknown) {
     if (spec.units) {
-      lines.push(`They want ${spec.units} homes. The application doesn't say how many are affordable — we use a 20% guess so you can play.`);
+      lines.push(`They want ${spec.units} homes. We could not find a social-housing figure on the public record.`);
     } else {
-      lines.push("The application doesn't say how many affordable homes. We use a 20% guess so you can play.");
+      lines.push("We could not find a social-housing figure on the public record. The application doesn't say.");
     }
     const who = clip(g.plainImpact, 130);
     lines.push(who || "Have a look at the card, then we'll stack it.");
@@ -267,7 +302,7 @@ export function talkLines(app) {
   } else if (spec.aff >= 0.35) {
     lines.push(
       spec.units
-        ? `They want ${spec.units} homes. About ${spec.socialHomes} of them would be social homes — that meets London's 35% ask.`
+        ? `They want ${spec.units} homes. About ${spec.socialHomes} of them would be social homes - that meets London's 35% ask.`
         : "This one meets London's 35% ask for affordable homes."
     );
     lines.push("Those are the homes that help people on the list.");
