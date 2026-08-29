@@ -121,7 +121,7 @@ function firstPlaceLabelId(map) {
 }
 
 const GROUND_LINE = /highway|road_|railway|aeroway|path|pier|waterway|boundary/;
-const KEEP_ABOVE = /^(3d-buildings|massing-extrude|refuse-ring|crowd|dust|ta-pressure|apps-pins|apps-hit|hospitals-dots)$/;
+const KEEP_ABOVE = /^(3d-buildings|massing-extrude|refuse-ring|crowd|dust|ta-pressure|apps-pins|apps-hit|apps-pin-marks|hospitals-dots)$/;
 
 /** Roads/rails/paths must sit under fill-extrusions or they paint on facades. */
 function tuckGroundUnderBuildings(map) {
@@ -155,6 +155,7 @@ function appsFeatureCollection(list, progress = {}) {
         const aff = Number(a.game?.affordablePct) || 0;
         const luxury = !!a.game?.luxury;
         const pin = done ? "pin-done" : aff >= 0.35 ? "pin-social" : luxury ? "pin-luxury" : "pin-mixed";
+        const fill = done ? "#f5c518" : aff >= 0.35 ? "#4CAF50" : luxury ? "#8a6a14" : "#d4c4a0";
         return {
           type: "Feature",
           id,
@@ -168,6 +169,7 @@ function appsFeatureCollection(list, progress = {}) {
             social,
             max,
             pin,
+            fill,
             site_name: a.site_name || "",
             lpa_app_no: a.lpa_app_no || "",
             units: Number(a.game?.units) || 0,
@@ -594,14 +596,7 @@ export function createGlobe(container, data, opts = {}) {
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.crossOrigin = "anonymous";
-      img.onload = () => {
-        const c = document.createElement("canvas");
-        c.width = img.naturalWidth || img.width;
-        c.height = img.naturalHeight || img.height;
-        const ctx = c.getContext("2d");
-        ctx.drawImage(img, 0, 0);
-        resolve(ctx.getImageData(0, 0, c.width, c.height));
-      };
+      img.onload = () => resolve(img);
       img.onerror = () => reject(new Error(url));
       img.src = url;
     });
@@ -612,17 +607,25 @@ export function createGlobe(container, data, opts = {}) {
     for (const kind of kinds) {
       const id = `pin-${kind}`;
       if (map.hasImage(id)) continue;
+      const url = `./assets/pins/${kind}.png?v=ob35`;
       try {
-        const img = await loadPinImage(`./assets/pins/${kind}.png?v=ob20`);
-        if (!map.hasImage(id)) map.addImage(id, img, { pixelRatio: 1 });
+        let image = null;
+        try {
+          const loaded = await map.loadImage(url);
+          image = loaded && loaded.data ? loaded.data : loaded;
+        } catch (_) {
+          image = await loadPinImage(url);
+        }
+        if (image && !map.hasImage(id)) map.addImage(id, image);
       } catch (err) {
         console.warn("ensurePinImages", id, err);
       }
     }
   }
 
+
   function pinLayout(overlap) {
-    const sizeInterp = ["interpolate", ["linear"], ["zoom"], 9, 0.40, 11, 0.45, 13, 0.85, 15, 1.1];
+    const sizeInterp = ["interpolate", ["linear"], ["zoom"], 9, 0.42, 11, 0.55, 13, 0.85, 15, 1.1];
     const size = [
       "case",
       ["boolean", ["feature-state", "hover"], false],
@@ -636,11 +639,13 @@ export function createGlobe(container, data, opts = {}) {
       "icon-allow-overlap": overlap,
       "icon-ignore-placement": overlap,
       "icon-padding": 2,
+      "icon-pitch-alignment": "viewport",
+      "icon-rotation-alignment": "viewport",
       visibility: layers.apps ? "visible" : "none",
     };
   }
 
-  const PIN_LAYERS = ["apps-pins", "apps-hit"];
+  const PIN_LAYERS = ["apps-pins", "apps-hit", "apps-pin-marks"];
   const HIT_DY = 28;
 
   function addAppPinLayers() {
@@ -650,6 +655,7 @@ export function createGlobe(container, data, opts = {}) {
       "apps-pins-near",
       "apps-pins",
       "apps-hit",
+      "apps-pin-marks",
       "apps-clusters",
       "apps-cluster-count",
       "apps-city-dots",
@@ -668,6 +674,21 @@ export function createGlobe(container, data, opts = {}) {
       data: appsFeatureCollection(data.applications, progressMap),
     });
     const vis = layers.apps ? "visible" : "none";
+    map.addLayer({
+      id: "apps-pin-marks",
+      type: "circle",
+      source: "apps-dots",
+      paint: {
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 9, 7, 11, 10, 15, 12],
+        "circle-color": ["coalesce", ["get", "fill"], "#d4c4a0"],
+        "circle-stroke-width": 2,
+        "circle-stroke-color": "#fff8e8",
+        "circle-opacity": 0.96,
+        "circle-pitch-alignment": "viewport",
+        "circle-pitch-scale": "viewport",
+      },
+      layout: { visibility: vis },
+    });
     map.addLayer({
       id: "apps-pins",
       type: "symbol",
@@ -710,6 +731,9 @@ export function createGlobe(container, data, opts = {}) {
 
   function ensureAmenityLayers() {
     killCrimeDots();
+    // Crime stays off the map (point clouds lag). Counts live on the case chip.
+    // School 400m rings stay off the map (they covered the borough in yellow).
+    // Proximity still scores on the case chip via liveability.js.
     const hospitals = Array.isArray(data.hospitals) ? data.hospitals : data.hospitals?.sites || [];
     if (opts.onChallenge) return;
     if (hospitals.length && !map.getSource("hospitals")) {
@@ -741,6 +765,7 @@ export function createGlobe(container, data, opts = {}) {
   }
 
   async function addImagery() {
+    // SimCity daytime: OpenFreeMap bright, no Esri satellite punch.
     imageryOk = false;
     paintLegoGround(map);
     add3dBuildings(map, imageryOk);
@@ -763,6 +788,7 @@ export function createGlobe(container, data, opts = {}) {
       essential: true,
     });
   }
+
 
   let pickerEl = null;
   let pendingPinId = null;
@@ -916,23 +942,10 @@ export function createGlobe(container, data, opts = {}) {
 
   function choosePin(id, lngLat) {
     if (!id || typeof opts.onChallenge !== "function") return;
-    const z = map.getZoom();
-    const center = lngLat || lngLatForId(id);
-    if (z >= 13.5 || pendingPinId === id) {
-      pendingPinId = null;
-      opts.onChallenge(id);
-      return;
-    }
-    pendingPinId = id;
-    if (center) {
-      map.flyTo({
-        center,
-        zoom: 15,
-        duration: reducedMotion() ? 0 : 700,
-        essential: true,
-      });
-    }
+    pendingPinId = null;
+    opts.onChallenge(id);
   }
+
 
   function zoomCluster(feature) {
     const coords = feature?.geometry?.coordinates;
@@ -967,11 +980,14 @@ export function createGlobe(container, data, opts = {}) {
     markHandled(e);
     if (suppressClick) return;
     if (downPt && Math.hypot(e.point.x - downPt.x, e.point.y - downPt.y) > 10) return;
+
     if (pickerEl && !pickerEl.hidden) {
       hidePicker();
       return;
     }
+
     if (!inWalk()) return;
+
     const qLayers = livePinLayers();
     const pad = 40;
     const bbox = [
@@ -995,6 +1011,7 @@ export function createGlobe(container, data, opts = {}) {
     }
     if (!ranked.length) return;
     const closest = ranked[0];
+
     const tight = ranked.filter((row) => row.d <= 24);
     if (tight.length >= 3) {
       showPicker(tight, e.point, e.originalEvent);
@@ -1006,6 +1023,7 @@ export function createGlobe(container, data, opts = {}) {
   function bindChallenges() {
     if (!map || map._cbBound) return;
     map._cbBound = true;
+
     const hoverOn = (ev) => {
       map.getCanvas().style.cursor = "pointer";
       const id = ev.features?.[0]?.properties?.id;
@@ -1015,11 +1033,13 @@ export function createGlobe(container, data, opts = {}) {
       map.getCanvas().style.cursor = "";
       setPinHover(null);
     };
+
     for (const id of livePinLayers()) {
       map.on("click", id, handleMapClick);
       map.on("mouseenter", id, hoverOn);
       map.on("mouseleave", id, hoverOff);
     }
+
     map.on("mousedown", (ev) => {
       downPt = ev.point;
       suppressClick = false;
@@ -1033,6 +1053,7 @@ export function createGlobe(container, data, opts = {}) {
       hidePicker();
     });
     map.on("click", handleMapClick);
+
     window.addEventListener("keydown", (ev) => {
       if (ev.key === "Escape") hidePicker();
     });
@@ -1310,14 +1331,17 @@ export function createGlobe(container, data, opts = {}) {
     const crowdDir = fx.crowd || (decision === "refuse" || collapse ? "out" : "in");
     const crowdCount = fx.crowdCount || 12;
     const taDelta = fx.taDelta || 0;
+
     if (lon != null && lat != null) {
       animateCrowd(lon, lat, crowdDir, crowdCount);
       updateTaFigures(lon, lat, taDelta);
     }
+
     if (!coords) return;
     const stats = massingStats(app, decision, deal);
     const aff = proposal?.affordablePct ?? app.game?.affordablePct ?? 0;
     const luxury = !!(proposal?.luxury ?? app.game?.luxury);
+
     if (decision === "refuse" || collapse) {
       if (map.getSource("massing")) map.getSource("massing").setData(emptyFc());
       const ring = coords[0];
@@ -1350,6 +1374,7 @@ export function createGlobe(container, data, opts = {}) {
       }
       return;
     }
+
     if (map.getSource("refuse-ring")) map.getSource("refuse-ring").setData(emptyFc());
     const settle = aff >= 0.35 ? LIME : luxury || aff < 0.35 ? GOLD : SODIUM;
     tweenMassing(coords, stats.height, settle, decision);
@@ -1363,7 +1388,7 @@ export function createGlobe(container, data, opts = {}) {
     layers[name] = on;
     if (!map || !ready) return;
     if (name === "apps") {
-      for (const id of ["apps-pins", "apps-hit"]) {
+      for (const id of ["apps-pins", "apps-hit", "apps-pin-marks"]) {
         if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", on ? "visible" : "none");
       }
     }
@@ -1491,12 +1516,14 @@ export function createGlobe(container, data, opts = {}) {
       fallback(String(err?.message || err));
       return false;
     }
+
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true, showCompass: true }), "top-left");
     map.on("webglcontextlost", () => fallback("webglcontextlost"));
     map.on("error", (e) => {
       const sid = e?.sourceId || e?.source?.id || "";
       if (String(sid).includes("esri")) imageryOk = false;
     });
+
     const loaded = await new Promise((resolve) => {
       let settled = false;
       const done = (ok) => {
