@@ -1,11 +1,11 @@
-import { loadChallenges, boot } from "./council.js?v=ob5";
+import { loadChallenges, boot } from "./council.js?v=ob6";
 
 const root = document.querySelector("#desk");
 const status = document.querySelector("#boot-status");
 
 try {
   const data = await loadChallenges();
-  if (status) status.textContent = `London \u00b7 ${data.challenges.length} challenges`;
+  if (status) status.textContent = `London · ${data.challenges.length} challenges`;
   boot(root, data);
 } catch (err) {
   if (status) {
