@@ -3,14 +3,27 @@
 let ac = null;
 let noise = null;
 
-function ctx() {
+function ensure() {
   try {
     ac = ac || new AudioContext();
-    if (ac.state === "suspended") ac.resume();
     return ac;
   } catch {
     return null;
   }
+}
+
+function ctx() {
+  const audio = ensure();
+  if (audio && audio.state === "suspended") audio.resume();
+  return audio;
+}
+
+/** Resume AudioContext from a user gesture so the first drop is not silent. */
+export function unlockAudio() {
+  const audio = ensure();
+  if (!audio) return Promise.resolve();
+  if (audio.state === "suspended") return audio.resume().catch(() => {});
+  return Promise.resolve();
 }
 
 function noiseBuf(audio) {
@@ -95,15 +108,29 @@ export function playRelease() {
   beep(audio, { type: "sine", freq: 410, at: 0.034, dur: 0.2, vol: 0.032, slide: -230 });
 }
 
-/** Block hits the stack: lowpassed noise + a 70–90 Hz sine. */
-export function playThud() {
+/** Block hits the stack: lowpassed noise + a 70–90 Hz sine. Plinth: heavier. */
+export function playThud(opts = {}) {
   const audio = ctx();
   if (!audio) return;
-  const lp = 150 + Math.random() * 100;
-  const tone = 70 + Math.random() * 20;
-  noiseHit(audio, { at: 0, dur: 0.2, vol: 0.22, freq: lp, type: "lowpass", q: 0.9, slide: -70 });
-  beep(audio, { type: "sine", freq: tone, at: 0, dur: 0.24, vol: 0.16, slide: -18 });
-  beep(audio, { type: "triangle", freq: tone * 0.55, at: 0.012, dur: 0.16, vol: 0.075, slide: -10 });
+  const heavy = !!opts.heavy;
+  const lp = (heavy ? 88 : 150) + Math.random() * (heavy ? 55 : 100);
+  const tone = (heavy ? 48 : 70) + Math.random() * (heavy ? 12 : 20);
+  noiseHit(audio, {
+    at: 0,
+    dur: heavy ? 0.34 : 0.2,
+    vol: heavy ? 0.3 : 0.22,
+    freq: lp,
+    type: "lowpass",
+    q: heavy ? 0.75 : 0.9,
+    slide: heavy ? -40 : -70,
+  });
+  beep(audio, { type: "sine", freq: tone, at: 0, dur: heavy ? 0.38 : 0.24, vol: heavy ? 0.22 : 0.16, slide: heavy ? -12 : -18 });
+  beep(audio, { type: "triangle", freq: tone * 0.55, at: 0.012, dur: heavy ? 0.26 : 0.16, vol: heavy ? 0.1 : 0.075, slide: -10 });
+  if (heavy) beep(audio, { type: "sine", freq: 36, at: 0, dur: 0.42, vol: 0.14, slide: -8 });
+}
+
+export function playPlinth() {
+  playThud({ heavy: true });
 }
 
 /** Slice chopped off / miss debris: crash burst, mid crack, falling bits. */
