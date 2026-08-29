@@ -168,7 +168,7 @@ export function shareOrigin() {
 
 export function shareUrl(app) {
   const id = encodeURIComponent(app?.id || app?.lpa_app_no || "");
-  return `${shareOrigin()}/?v=ob9&app=${id}&scene=stack`;
+  return `${shareOrigin()}/?v=ob10&app=${id}&scene=stack`;
 }
 
 export function civicHandles(civic, slug) {
@@ -215,6 +215,10 @@ export function civicLoseLine() {
 
 export function civicFailRetryLine() {
   return "Have another go — this one actually has homes for the list.";
+}
+
+export function civicWinLine() {
+  return "You stacked it. This one actually has homes for the list.";
 }
 
 export function talkLines(app) {
