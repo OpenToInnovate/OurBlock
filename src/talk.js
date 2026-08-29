@@ -188,7 +188,7 @@ export function factCopy(app) {
   } else if (f.affordablePct === 0 || f.socialHomes === 0) {
     homes.push("None of these are for people on the waiting list.");
   } else if (f.affordablePct >= 35) {
-    homes.push(`About ${f.socialHomes} of them would be social homes — that meets London's 35% ask on bigger schemes.`);
+    homes.push(`About ${f.socialHomes} of them would be social homes. That meets London's 35% ask on bigger schemes.`);
   } else if (f.units) {
     homes.push(`About ${f.socialHomes} of them would be social homes.`);
   }
@@ -234,7 +234,7 @@ export function shareOrigin() {
 
 export function shareUrl(app) {
   const id = encodeURIComponent(app?.id || app?.lpa_app_no || "");
-  return `${shareOrigin()}/?v=ob15&app=${id}&scene=stack`;
+  return `${shareOrigin()}/?app=${id}&scene=stack`;
 }
 
 export function civicHandles(civic, slug) {
@@ -253,7 +253,7 @@ export function civicHandles(civic, slug) {
 export function sharePayload(app, civic) {
   const f = factsModel(app);
   const copy = factCopy(app);
-  const url = shareUrl(app);
+  const url = shareUrl(app).replace(/[?&]v=[^&]*/g, "").replace(/\?&/, "?").replace(/\?$/, "");
   const site = String(f.site || "this site").split(",")[0].trim() || "this site";
   const borough = f.borough || "London";
   const tags = civicHandles(civic, f.slug).join(" ");
@@ -291,16 +291,20 @@ export function sharePayload(app, civic) {
   };
 }
 
+function scrubTalk(s) {
+  return String(s || "").replace(/[\u2014\u2013]/g, ",").replace(/\s--\s/g, ". ");
+}
+
 export function civicLoseLine() {
-  return "You stacked it, but this permission does almost nothing for social housing.";
+  return scrubTalk("You stacked it, but this permission does almost nothing for social housing.");
 }
 
 export function civicFailRetryLine() {
-  return "Have another go — this one actually has homes for the list.";
+  return scrubTalk("Have another go. This one actually has homes for the list.");
 }
 
 export function civicWinLine() {
-  return "You stacked it. This one actually has homes for the list.";
+  return scrubTalk("You stacked it. This one actually has homes for the list.");
 }
 
 export function talkLines(app) {
@@ -308,45 +312,43 @@ export function talkLines(app) {
   const src = sourceOf(app);
   const unknown = spec.unknown || spec.aff == null;
   const low = isLowSocial(app, spec);
-  const ready = "Ready when you are.";
+  const last = "Have a look, then hit STACK.";
   const stack = "Let's get it stacked.";
-
+  let lines;
   if (/refused/i.test(src)) {
-    return [
-      "They refused this. We're stacking the ask they said no to — not a live yes.",
-      ready,
+    lines = [
+      "They refused this. We're stacking what they said no to, not a live yes.",
+      last,
     ];
-  }
-  if (/council-led/i.test(src)) {
-    return [
+  } else if (/council-led/i.test(src)) {
+    lines = [
       "Council homes. I'm chuffed about that.",
       "Let's stack them well.",
       stack,
     ];
-  }
-  if (unknown) {
-    return [
+  } else if (unknown) {
+    lines = [
       "They've not written the social homes down. That's a worry.",
-      "Don't invent a figure. If it's not on the record, we don't guess.",
-      ready,
+      "If it's not on the record, we don't guess.",
+      last,
     ];
-  }
-  if (low) {
-    return [
+  } else if (low) {
+    lines = [
       "A thin slice for the list. I'm not happy.",
       "Glass and gold are the trap.",
-      ready,
+      last,
     ];
-  }
-  if (spec.aff >= 0.35) {
-    return [
-      "I'm chuffed. Keep the brick — that's homes for the list.",
+  } else if (spec.aff >= 0.35) {
+    lines = [
+      "I'm chuffed. Keep the brick. That's homes for the list.",
       stack,
     ];
+  } else {
+    lines = [
+      "Not nothing. There's some for the list.",
+      "Not enough, though.",
+      last,
+    ];
   }
-  return [
-    "Not nothing. There's some for the list.",
-    "Not enough, though.",
-    ready,
-  ];
+  return lines.map(scrubTalk);
 }
