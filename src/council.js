@@ -5,11 +5,13 @@ import {
   talkLines,
   challengeSpec,
   factsModel,
+  factCopy,
   isLowSocial,
   sharePayload,
   civicLoseLine,
-} from "./talk.js?v=ob8";
-import { createStacker } from "./stacker.js?v=ob8";
+  civicFailRetryLine,
+} from "./talk.js?v=ob9";
+import { createStacker } from "./stacker.js?v=ob9";
 import { loadProgress, saveChallenge, challengeId, recordOf } from "./progress.js?v=ob8";
 import { unlockAudio } from "./stack-fx.js?v=ob8";
 
@@ -168,47 +170,36 @@ function fillFacts(app) {
     el.innerHTML = "";
     return;
   }
-  const f = factsModel(app);
-  const low = f.affordablePct < 12 || f.socialHomes === 0;
+  const c = factCopy(app);
   const bits = [];
-  bits.push(`<p class="facts-kicker">Application pack</p>`);
-  if (f.site) bits.push(`<p class="facts-site">${esc(f.site)}</p>`);
-  const meta = [f.borough, f.ward, f.ref, f.type].filter(Boolean).join(" · ");
-  if (meta) bits.push(`<p class="facts-meta">${esc(meta)}</p>`);
+  if (c.site) bits.push(`<p class="facts-site">${esc(c.site)}</p>`);
+  if (c.place) bits.push(`<p class="facts-place">${esc(c.place)}</p>`);
 
-  bits.push(`<p class="facts-row"><span class="facts-label">Homes</span>`);
-  const homeBits = [];
-  if (f.units) homeBits.push(`${f.units} homes`);
-  const affTxt = f.affordableInferred
-    ? `${f.affordablePct}% affordable (inferred 20% — not stated on the application)`
-    : `${f.affordablePct}% affordable`;
-  homeBits.push(affTxt);
-  homeBits.push(`about ${f.socialHomes} social (estimate)`);
-  if (f.luxury) homeBits.push("luxury flag");
-  bits.push(`<span class="facts-aff${low ? " is-low" : f.affordablePct >= 35 ? " is-ok" : ""}">${esc(homeBits.join(" · "))}</span></p>`);
+  if (c.ask) {
+    bits.push(`<p class="facts-ask"><span class="facts-label">What they want</span>${esc(c.ask)}</p>`);
+  }
 
-  const vs = f.affordablePct >= 35
-    ? `meets the London Plan ${f.londonPlan}%`
-    : `${f.affordablePct}% vs London Plan ${f.londonPlan}%`;
-  bits.push(`<p class="facts-row"><span class="facts-label">London Plan</span>${esc(vs)}</p>`);
+  if (c.homes.length) {
+    const tone = c.low ? " is-low" : c.ok ? " is-ok" : "";
+    bits.push(`<p class="facts-row"><span class="facts-label">Homes</span><span class="facts-aff${tone}">${esc(c.homes.join(" "))}</span></p>`);
+  }
 
-  if (f.constraints.length) {
-    bits.push(`<p class="facts-label">Constraints</p><ul class="facts-constraints">`);
-    for (const c of f.constraints) bits.push(`<li>${esc(c)}</li>`);
+  bits.push(`<p class="facts-row"><span class="facts-label">London rule</span>${esc(c.london)}</p>`);
+
+  if (c.extras.length) {
+    bits.push(`<p class="facts-label">This street</p><ul class="facts-constraints">`);
+    for (const extra of c.extras) bits.push(`<li>${esc(extra)}</li>`);
     bits.push(`</ul>`);
   }
 
-  if (f.plainAsk) {
-    bits.push(`<p class="facts-ask"><span class="facts-label">What they ask</span>${esc(f.plainAsk)}</p>`);
+  if (c.impact) {
+    bits.push(`<p class="facts-impact"><span class="facts-label">What it means</span>${esc(c.impact)}</p>`);
   }
-  if (f.plainImpact) {
-    bits.push(`<p class="facts-impact"><span class="facts-label">What it means</span>${esc(f.plainImpact)}</p>`);
+  if (c.stalled) {
+    bits.push(`<p class="facts-note">${esc(c.stalled)}</p>`);
   }
-  if (f.url) {
-    bits.push(`<p class="facts-row"><a href="${esc(f.url)}" target="_blank" rel="noopener noreferrer">Open the application</a></p>`);
-  }
-  if (f.stalled) {
-    bits.push(`<p class="facts-note">This one looks stalled — older ref or a variation of an existing permission.</p>`);
+  if (c.url) {
+    bits.push(`<p class="facts-row"><a href="${esc(c.url)}" target="_blank" rel="noopener noreferrer">${esc(c.linkLabel)}</a></p>`);
   }
   el.innerHTML = bits.join("");
   el.hidden = false;
@@ -274,12 +265,58 @@ function pickSceneApp(data) {
   return list.find((a) => a.boroughSlug === "tower-hamlets") || list[0];
 }
 
-function showCivicLose(app, globe) {
+function restartDrop(el) {
+  if (!el) return;
+  el.hidden = false;
+  el.classList.remove("is-in");
+  void el.offsetWidth;
+  el.classList.add("is-in");
+}
+
+function showCivic(app, globe, opts = {}) {
+  const won = opts.won !== false;
   current = app;
   borough = app.borough || "London";
+  const low = isLowSocial(app);
+  const civicEl = $("civic");
+  const drop = $("civic-drop");
+  const title = $("civic-title");
   const line = $("civic-line");
-  if (line) line.textContent = civicLoseLine();
+  const share = $("civic-share");
   const appBtn = $("civic-app");
+
+  civicEl?.classList.toggle("is-fail", !won);
+  civicEl?.classList.toggle("is-win-lose", !!(won && low));
+  civicEl?.classList.toggle("is-fail-retry", !!(!won && !low));
+
+  if (!won) {
+    if (drop) {
+      drop.textContent = "You Failed.";
+      restartDrop(drop);
+    }
+  } else if (drop) {
+    drop.hidden = true;
+    drop.classList.remove("is-in");
+  }
+
+  if (title) {
+    if (won && low) {
+      title.textContent = "You won. Our Block lost.";
+      title.hidden = false;
+    } else if (!won && low) {
+      title.textContent = "Our Block lost.";
+      title.hidden = false;
+    } else {
+      title.textContent = "You Failed.";
+      title.hidden = true;
+    }
+  }
+
+  if (line) {
+    line.textContent = low ? civicLoseLine() : civicFailRetryLine();
+  }
+
+  if (share) share.hidden = !low;
   if (appBtn) appBtn.hidden = !app?.url_planning_app;
   const st = $("civic-share-status");
   if (st) {
@@ -288,6 +325,10 @@ function showCivicLose(app, globe) {
   }
   paintScore();
   setMode("civic", globe);
+}
+
+function showCivicLose(app, globe) {
+  showCivic(app, globe, { won: true });
 }
 
 async function postStance(app) {
@@ -356,12 +397,11 @@ function openStack(globe) {
       globe.setProgress?.(all);
     }
     if (!result.won) {
-      showTalk(current);
-      setMode("talk", globe);
+      showCivic(current, globe, { won: false });
       return;
     }
     if (result.civicLose || isLowSocial(current, result.spec)) {
-      showCivicLose(current, globe);
+      showCivic(current, globe, { won: true });
       return;
     }
     setMode("walk", globe);
@@ -413,7 +453,8 @@ export function boot(root, data) {
     const url = current?.url_planning_app;
     if (url) window.open(url, "_blank", "noopener,noreferrer");
   });
-  $("civic-map")?.addEventListener("click", () => {
+  $("civic")?.addEventListener("click", (ev) => {
+    if (ev.target.closest(".civic-card")) return;
     setMode("walk", globe);
     globe.overview?.();
   });
@@ -442,7 +483,10 @@ export function boot(root, data) {
         if (ok) globe.flyToStreet(app, { jump: true, zoom: 17.7, pitch: 58 });
       }
       if (scene === "stack") openStack(globe);
-      if (scene === "civic" && app) showCivicLose(app, globe);
+      if (scene === "civic" && app) {
+        const fail = new URLSearchParams(location.search).get("fail") === "1";
+        showCivic(app, globe, { won: !fail });
+      }
     } else if (ok) {
       startDrift(globe);
     }
@@ -458,6 +502,7 @@ export function boot(root, data) {
     civic: () => civicBundle,
     current: () => current,
     facts: (app) => factsModel(app || current),
+    copy: (app) => factCopy(app || current),
     share: (app) => sharePayload(app || current, civicBundle),
     open: (id) => {
       const app = byId.get(id) || data.challenges[0];
@@ -468,9 +513,9 @@ export function boot(root, data) {
     stackNow: () => openStack(globe),
     stacker: () => stacker,
     progress: () => loadProgress(),
-    showCivic: (id) => {
-      const app = (id && byId.get(id)) || current || data.challenges[0];
-      if (app) showCivicLose(app, globe);
+    showCivic: (id, won = true) => {
+      const app = (typeof id === "string" && byId.get(id)) || current || data.challenges[0];
+      if (app) showCivic(app, globe, { won: won !== false });
     },
   };
   return window.__cb;
