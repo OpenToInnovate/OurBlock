@@ -381,7 +381,7 @@ export function createStacker(canvas, app, onDone) {
     ctx.fillText(`${Math.round(winShown)} social homes`, W / 2, H * 0.36 + 46);
     ctx.font = "600 15px Nunito, sans-serif";
     ctx.fillStyle = "#c5d6bc";
-    const mx = maxHomes && target ? `${Math.round(winShown)} / ${mx}` : "Homes for the list";
+    const mx = maxHomes || target;
     ctx.fillText(mx ? `${Math.round(winShown)} / ${mx}` : "Homes for the list", W / 2, H * 0.36 + 72);
     ctx.font = "600 13px Nunito, sans-serif";
     ctx.fillText("Tap to keep walking", W / 2, H * 0.36 + 98);
