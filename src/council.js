@@ -11,7 +11,7 @@ import {
   civicLoseLine,
   civicFailRetryLine,
   civicWinLine,
-} from "./talk.js?v=ob10";
+} from "./talk.js?v=ob11";
 import { createStacker } from "./stacker.js?v=ob10";
 import { loadProgress, saveChallenge, challengeId, recordOf } from "./progress.js?v=ob8";
 import { unlockAudio } from "./stack-fx.js?v=ob8";
