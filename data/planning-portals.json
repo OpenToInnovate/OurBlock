@@ -1,0 +1,192 @@
+{
+  "checked": "2026-08-29",
+  "note": "Official LPA planning search/register pages opened or taken from an official council page we opened. Deep Idox keyVal links are kept only when GET showed this application.",
+  "portals": [
+    {
+      "slug": "barking-and-dagenham",
+      "officialSearchUrl": "https://www.lbbd.gov.uk/planning-building-control-and-local-land-charges/planning/comment-or-object-planning-application",
+      "notes": "Official LBBD comment-or-object page opened 200. It links to https://online-befirst.lbbd.gov.uk/planning/index.html?fa=search (GET 406 IDX002 from this network). Keep lpa_app_no so the player can type the ref on BeFirst.",
+      "checked": "2026-08-29"
+    },
+    {
+      "slug": "barnet",
+      "officialSearchUrl": "https://publicaccess.barnet.gov.uk/online-applications/search.do?action=advanced",
+      "notes": "Idox Public Access advanced search. Web search retrieved the live search form on 2026-08-29 (Planning – Applications Search). Box GET timed out.",
+      "checked": "2026-08-29"
+    },
+    {
+      "slug": "bexley",
+      "officialSearchUrl": "https://www.bexley.gov.uk/services/planning-and-building-control/view-and-comment-planning-applications/viewing-planning-applications",
+      "notes": "Official Bexley viewing-applications page opened 200. It points to Planning Application Information Online (pa.bexley.gov.uk). Direct Idox GET timed out / 500 from this network.",
+      "checked": "2026-08-29"
+    },
+    {
+      "slug": "brent",
+      "officialSearchUrl": "https://pa.brent.gov.uk/online-applications/search.do?action=simple&searchType=Application",
+      "notes": "Idox Public Access simple search opened 200 (title Simple Search).",
+      "checked": "2026-08-29"
+    },
+    {
+      "slug": "bromley",
+      "officialSearchUrl": "https://searchapplications.bromley.gov.uk/online-applications/",
+      "notes": "Idox Public Access home / simple search. Web search retrieved the live Simple Search form on 2026-08-29. Box GET timed out.",
+      "checked": "2026-08-29"
+    },
+    {
+      "slug": "camden",
+      "officialSearchUrl": "https://planningrecords.camden.gov.uk/Northgate/PlanningExplorer/GeneralSearch.aspx",
+      "notes": "Northgate Planning Explorer general search opened 200 (title Planning Application Search).",
+      "checked": "2026-08-29"
+    },
+    {
+      "slug": "croydon",
+      "officialSearchUrl": "https://publicaccess3.croydon.gov.uk/online-applications/search.do?action=simple&searchType=Application",
+      "notes": "Idox Public Access simple search opened (Planning – Simple Search form). Box GET timed out; fetch provider returned the search form.",
+      "checked": "2026-08-29"
+    },
+    {
+      "slug": "ealing",
+      "officialSearchUrl": "https://pam.ealing.gov.uk/online-applications/search.do?action=simple&searchType=Application",
+      "notes": "Idox Public Access simple search opened 200 (title Simple Search).",
+      "checked": "2026-08-29"
+    },
+    {
+      "slug": "enfield",
+      "officialSearchUrl": "https://planningandbuildingcontrol.enfield.gov.uk/online-applications/",
+      "notes": "Official Enfield planning register (linked from enfield.gov.uk/services/planning/the-planning-register). Fetch provider opened Simple Search. Box GET timed out.",
+      "checked": "2026-08-29"
+    },
+    {
+      "slug": "greenwich",
+      "officialSearchUrl": "https://planning.royalgreenwich.gov.uk/online-applications/search.do?action=simple&searchType=Application",
+      "notes": "Idox Public Access simple search opened 200 (title Simple Search).",
+      "checked": "2026-08-29"
+    },
+    {
+      "slug": "hackney",
+      "officialSearchUrl": "https://www.hackney.gov.uk/planning-and-building/view-and-comment-planning-applications",
+      "notes": "Official Hackney view-and-comment page opened 200. It links to https://developmentandhousing.hackney.gov.uk/planning/index.html (GET 406 IDX002 from this network).",
+      "checked": "2026-08-29"
+    },
+    {
+      "slug": "hammersmith-and-fulham",
+      "officialSearchUrl": "https://property.lbhf.gov.uk/NECSWS/ES/Presentation/Planning/OnlinePlanning/OnlinePlanningSearch",
+      "notes": "NEC Planning Search opened 200 (title Planning Search). Council /planning landing also opened 200.",
+      "checked": "2026-08-29"
+    },
+    {
+      "slug": "haringey",
+      "officialSearchUrl": "https://publicregister.haringey.gov.uk/pr/s/register-view?c__r=Arcus_BE_Public_Register",
+      "notes": "Haringey Public Register opened 200. URL taken from official how-to-view-comment page (also opened 200).",
+      "checked": "2026-08-29"
+    },
+    {
+      "slug": "harrow",
+      "officialSearchUrl": "https://www.harrow.gov.uk/planning-developments/commenting-planning-applications",
+      "notes": "Official Harrow commenting page opened 200. It links to http://planningsearch.harrow.gov.uk/planning/index.html?fa=search (GET 406 IDX002 from this network).",
+      "checked": "2026-08-29"
+    },
+    {
+      "slug": "havering",
+      "officialSearchUrl": "https://development.havering.gov.uk/OcellaWeb/planningSearch",
+      "notes": "Ocella planning search opened 200 (title OcellaWeb).",
+      "checked": "2026-08-29"
+    },
+    {
+      "slug": "hillingdon",
+      "officialSearchUrl": "https://planning.hillingdon.gov.uk/OcellaWeb/planningSearch",
+      "notes": "Ocella planning search opened 200 (title London Borough of Hillingdon - Planning).",
+      "checked": "2026-08-29"
+    },
+    {
+      "slug": "hounslow",
+      "officialSearchUrl": "https://www.hounslow.gov.uk/planning-building/search-planning-applications",
+      "notes": "Official Hounslow search-planning-applications page opened 200. It links to the NEC search at planningandbuilding.hounslow.gov.uk/.../OnlinePlanningSearch (TLS failed from this network).",
+      "checked": "2026-08-29"
+    },
+    {
+      "slug": "islington",
+      "officialSearchUrl": "https://www.islington.gov.uk/planning/applications/comment",
+      "notes": "Official Islington view-or-comment page opened 200 after the April 2024 system change. It links to https://planning.agileapplications.co.uk/islington (GET 403 from this network).",
+      "checked": "2026-08-29"
+    },
+    {
+      "slug": "kensington-and-chelsea",
+      "officialSearchUrl": "https://www.rbkc.gov.uk/planningsearch",
+      "notes": "RBKC Planning Application Search opened (search form with application type / status filters). Box GET hit Cloudflare 403; fetch provider returned the search page.",
+      "checked": "2026-08-29"
+    },
+    {
+      "slug": "kingston-upon-thames",
+      "officialSearchUrl": "https://www.kingston.gov.uk/planning-and-building-control/planning-applications/search-or-comment",
+      "notes": "Official Kingston search-or-comment page opened 200. It links to https://publicaccess.kingston.gov.uk/online-applications/search.do?action=simple (box GET timed out).",
+      "checked": "2026-08-29"
+    },
+    {
+      "slug": "lambeth",
+      "officialSearchUrl": "https://planning.lambeth.gov.uk/online-applications/search.do?action=simple&searchType=Application",
+      "notes": "Idox Public Access simple search opened 200 (title Simple Search).",
+      "checked": "2026-08-29"
+    },
+    {
+      "slug": "lewisham",
+      "officialSearchUrl": "https://planning.lewisham.gov.uk/online-applications/search.do?action=simple&searchType=Application",
+      "notes": "Idox Public Access simple search opened 200 (title Simple Search).",
+      "checked": "2026-08-29"
+    },
+    {
+      "slug": "merton",
+      "officialSearchUrl": "https://www.merton.gov.uk/planning-and-buildings/planning/find",
+      "notes": "Official Merton find-a-planning-application page opened 200. It links to the Regulatory Services Hub search (rspandlp.merton.gov.uk). Pack Northgate URLs 406/timeout from this network.",
+      "checked": "2026-08-29"
+    },
+    {
+      "slug": "newham",
+      "officialSearchUrl": "https://pa.newham.gov.uk/",
+      "notes": "Newham Public Access home / Simple Search. Web search retrieved the live Simple Search form on 2026-08-29. Box GET timed out.",
+      "checked": "2026-08-29"
+    },
+    {
+      "slug": "redbridge",
+      "officialSearchUrl": "https://my.redbridge.gov.uk/planning",
+      "notes": "Redbridge MyAccount planning search opened 200 (Search all planning applications by reference, address, or description).",
+      "checked": "2026-08-29"
+    },
+    {
+      "slug": "richmond-upon-thames",
+      "officialSearchUrl": "https://www.richmond.gov.uk/services/planning",
+      "notes": "Official planning hub opened 200. Search planning applications 302s to https://planning.richmond.gov.uk/richmond/search-applications/ (destination SSL/timeout from this network). Keep lpa_app_no.",
+      "checked": "2026-08-29"
+    },
+    {
+      "slug": "southwark",
+      "officialSearchUrl": "https://planning.southwark.gov.uk/online-applications/search.do?action=simple&searchType=Application",
+      "notes": "Idox simple search URL published on official southwark.gov.uk view-planning-register page (href extracted). Web search retrieved the live Simple Search form. Box GET timed out.",
+      "checked": "2026-08-29"
+    },
+    {
+      "slug": "sutton",
+      "officialSearchUrl": "https://planningregister.sutton.gov.uk/online-applications/",
+      "notes": "Idox Public Access home / Simple Search. Web search retrieved the live Simple Search form on 2026-08-29. Box GET timed out.",
+      "checked": "2026-08-29"
+    },
+    {
+      "slug": "tower-hamlets",
+      "officialSearchUrl": "https://development.towerhamlets.gov.uk/online-applications/search.do?action=simple&searchType=Application",
+      "notes": "Idox Public Access simple search opened 200 (title Simple Search).",
+      "checked": "2026-08-29"
+    },
+    {
+      "slug": "waltham-forest",
+      "officialSearchUrl": "https://www.walthamforest.gov.uk/planning-and-building-control/planning-applications/find-application",
+      "notes": "Official Waltham Forest find-an-application page opened (fetch provider). Box GET returned 202 empty. Agile register builtenvironment.walthamforest.gov.uk returned IDX002 from this network.",
+      "checked": "2026-08-29"
+    },
+    {
+      "slug": "wandsworth",
+      "officialSearchUrl": "https://planning.wandsworth.gov.uk/Northgate/PlanningExplorer/GeneralSearch.aspx",
+      "notes": "Northgate Planning Explorer general search opened 200 (title Planning Application Search).",
+      "checked": "2026-08-29"
+    }
+  ]
+}
