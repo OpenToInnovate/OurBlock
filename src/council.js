@@ -1,10 +1,17 @@
 /** Our Block boot: landing → walk pins → talk → stacker. Desk stays dead. */
 
-import { createGlobe } from "./globe.js?v=ob7";
-import { talkLines, challengeSpec } from "./talk.js?v=ob7";
-import { createStacker } from "./stacker.js?v=ob7";
-import { loadProgress, saveChallenge, challengeId, recordOf } from "./progress.js?v=ob7";
-import { unlockAudio } from "./stack-fx.js?v=ob7";
+import { createGlobe } from "./globe.js?v=ob8";
+import {
+  talkLines,
+  challengeSpec,
+  factsModel,
+  isLowSocial,
+  sharePayload,
+  civicLoseLine,
+} from "./talk.js?v=ob8";
+import { createStacker } from "./stacker.js?v=ob8";
+import { loadProgress, saveChallenge, challengeId, recordOf } from "./progress.js?v=ob8";
+import { unlockAudio } from "./stack-fx.js?v=ob8";
 
 const LONDON = { lng: -0.1, lat: 51.51, zoom: 11.15, pitch: 0, bearing: -12 };
 
@@ -19,18 +26,29 @@ let stacker = null;
 let driftTimer = 0;
 let driftDir = 1;
 let stackWanderTimer = 0;
+let civicBundle = null;
 
 function $(id) {
   return document.getElementById(id);
 }
 
+function esc(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 export async function loadChallenges() {
   const soft = (p) => fetch(p).then((r) => (r.ok ? r.json() : null)).catch(() => null);
-  const [boroughs, th, hospitals] = await Promise.all([
+  const [boroughs, th, hospitals, civic] = await Promise.all([
     soft("./data/boroughs.json"),
     fetch("./data/packs/tower-hamlets.json").then((r) => r.json()),
     soft("./data/hospitals-london.json"),
+    soft("./data/civic.json"),
   ]);
+  civicBundle = civic || { national: {}, councils: {} };
   const slugs = (boroughs?.boroughs || [])
     .filter((b) => b.playable && b.slug !== "tower-hamlets")
     .map((b) => b.slug);
@@ -56,6 +74,7 @@ export async function loadChallenges() {
     hospitals: hospitals?.sites || th.hospitals || [],
     pack: th,
     challenges,
+    civic: civicBundle,
   };
 }
 
@@ -70,12 +89,13 @@ function setMode(next, globe) {
   mode = next;
   const wrap = $("map-wrap");
   wrap?.classList.toggle("is-landing", next === "landing");
-  wrap?.classList.toggle("is-walk", next === "walk" || next === "talk");
+  wrap?.classList.toggle("is-walk", next === "walk" || next === "talk" || next === "civic");
   wrap?.classList.toggle("is-stack", next === "stack");
   $("landing").hidden = next !== "landing";
   $("walk-hud").hidden = next === "landing" || next === "stack";
   $("talk").hidden = next !== "talk";
   $("stack").hidden = next !== "stack";
+  $("civic").hidden = next !== "civic";
   if (next !== "landing") stopDrift();
   if (next !== "stack") stopStackWander();
   globe?.resize?.();
@@ -140,6 +160,60 @@ function scoreLine(app) {
   return `You stacked ${rec.social} / ${max} social homes (${pct}%). Have another go.`;
 }
 
+function fillFacts(app) {
+  const el = $("facts");
+  if (!el) return;
+  if (!app) {
+    el.hidden = true;
+    el.innerHTML = "";
+    return;
+  }
+  const f = factsModel(app);
+  const low = f.affordablePct < 12 || f.socialHomes === 0;
+  const bits = [];
+  bits.push(`<p class="facts-kicker">Application pack</p>`);
+  if (f.site) bits.push(`<p class="facts-site">${esc(f.site)}</p>`);
+  const meta = [f.borough, f.ward, f.ref, f.type].filter(Boolean).join(" · ");
+  if (meta) bits.push(`<p class="facts-meta">${esc(meta)}</p>`);
+
+  bits.push(`<p class="facts-row"><span class="facts-label">Homes</span>`);
+  const homeBits = [];
+  if (f.units) homeBits.push(`${f.units} homes`);
+  const affTxt = f.affordableInferred
+    ? `${f.affordablePct}% affordable (inferred 20% — not stated on the application)`
+    : `${f.affordablePct}% affordable`;
+  homeBits.push(affTxt);
+  homeBits.push(`about ${f.socialHomes} social (estimate)`);
+  if (f.luxury) homeBits.push("luxury flag");
+  bits.push(`<span class="facts-aff${low ? " is-low" : f.affordablePct >= 35 ? " is-ok" : ""}">${esc(homeBits.join(" · "))}</span></p>`);
+
+  const vs = f.affordablePct >= 35
+    ? `meets the London Plan ${f.londonPlan}%`
+    : `${f.affordablePct}% vs London Plan ${f.londonPlan}%`;
+  bits.push(`<p class="facts-row"><span class="facts-label">London Plan</span>${esc(vs)}</p>`);
+
+  if (f.constraints.length) {
+    bits.push(`<p class="facts-label">Constraints</p><ul class="facts-constraints">`);
+    for (const c of f.constraints) bits.push(`<li>${esc(c)}</li>`);
+    bits.push(`</ul>`);
+  }
+
+  if (f.plainAsk) {
+    bits.push(`<p class="facts-ask"><span class="facts-label">What they ask</span>${esc(f.plainAsk)}</p>`);
+  }
+  if (f.plainImpact) {
+    bits.push(`<p class="facts-impact"><span class="facts-label">What it means</span>${esc(f.plainImpact)}</p>`);
+  }
+  if (f.url) {
+    bits.push(`<p class="facts-row"><a href="${esc(f.url)}" target="_blank" rel="noopener noreferrer">Open the application</a></p>`);
+  }
+  if (f.stalled) {
+    bits.push(`<p class="facts-note">This one looks stalled — older ref or a variation of an existing permission.</p>`);
+  }
+  el.innerHTML = bits.join("");
+  el.hidden = false;
+}
+
 function showTalk(app) {
   current = app;
   borough = app.borough || "London";
@@ -161,13 +235,14 @@ function showTalk(app) {
     const rec = recordOf(challengeId(app));
     btn.textContent = rec?.done ? "STACK AGAIN" : "STACK";
   }
+  fillFacts(app);
   paintScore();
 }
 
 function advanceTalk() {
   lineIdx += 1;
   if (lineIdx >= lines.length - 1) {
-    $("talk-line").textContent = lines[lines.length - 1] || "Stack it.";
+    $("talk-line").textContent = lines[lines.length - 1] || "Let's get it stacked.";
     $("talk-next").hidden = true;
     $("talk-stack").hidden = false;
     $("talk-stack").focus();
@@ -199,6 +274,60 @@ function pickSceneApp(data) {
   return list.find((a) => a.boroughSlug === "tower-hamlets") || list[0];
 }
 
+function showCivicLose(app, globe) {
+  current = app;
+  borough = app.borough || "London";
+  const line = $("civic-line");
+  if (line) line.textContent = civicLoseLine();
+  const appBtn = $("civic-app");
+  if (appBtn) appBtn.hidden = !app?.url_planning_app;
+  const st = $("civic-share-status");
+  if (st) {
+    st.hidden = true;
+    st.textContent = "";
+  }
+  paintScore();
+  setMode("civic", globe);
+}
+
+async function postStance(app) {
+  const payload = sharePayload(app, civicBundle);
+  const st = $("civic-share-status");
+  const setStatus = (msg) => {
+    if (!st) return;
+    st.hidden = false;
+    st.textContent = msg;
+  };
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: payload.title, text: payload.text, url: payload.url });
+      return;
+    } catch (err) {
+      if (err && err.name === "AbortError") return;
+    }
+  }
+  const blob = `${payload.text}`;
+  try {
+    await navigator.clipboard.writeText(blob);
+    setStatus("Copied");
+    return;
+  } catch (_) {}
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = blob;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    ta.remove();
+    setStatus("Copied");
+  } catch (_) {
+    setStatus("Copy the text above.");
+  }
+}
+
 function openStack(globe) {
   if (!current) return;
   setMode("stack", globe);
@@ -225,6 +354,15 @@ function openStack(globe) {
         done: true,
       });
       globe.setProgress?.(all);
+    }
+    if (!result.won) {
+      showTalk(current);
+      setMode("talk", globe);
+      return;
+    }
+    if (result.civicLose || isLowSocial(current, result.spec)) {
+      showCivicLose(current, globe);
+      return;
     }
     setMode("walk", globe);
     globe.overview?.();
@@ -268,10 +406,21 @@ export function boot(root, data) {
     unlockAudio();
     openStack(globe);
   });
+  $("civic-share")?.addEventListener("click", () => {
+    if (current) postStance(current);
+  });
+  $("civic-app")?.addEventListener("click", () => {
+    const url = current?.url_planning_app;
+    if (url) window.open(url, "_blank", "noopener,noreferrer");
+  });
+  $("civic-map")?.addEventListener("click", () => {
+    setMode("walk", globe);
+    globe.overview?.();
+  });
 
   paintScore();
   const bootScene = new URLSearchParams(location.search).get("scene");
-  setMode(bootScene === "stack" || bootScene === "walk" || bootScene === "talk" ? "walk" : "landing", globe);
+  setMode(bootScene === "stack" || bootScene === "walk" || bootScene === "talk" || bootScene === "civic" ? "walk" : "landing", globe);
 
   globe.start().then((ok) => {
     if (ok && globe.isReady()) {
@@ -283,16 +432,17 @@ export function boot(root, data) {
     const st = $("boot-status");
     if (st) st.hidden = true;
     const scene = new URLSearchParams(location.search).get("scene");
-    if (scene === "walk" || scene === "talk" || scene === "stack") {
+    if (scene === "walk" || scene === "talk" || scene === "stack" || scene === "civic") {
       setMode("walk", globe);
       const app = pickSceneApp(data);
-      if ((scene === "talk" || scene === "stack") && app) {
+      if ((scene === "talk" || scene === "stack" || scene === "civic") && app) {
         current = app;
         showTalk(app);
         setMode("talk", globe);
         if (ok) globe.flyToStreet(app, { jump: true, zoom: 17.7, pitch: 58 });
       }
       if (scene === "stack") openStack(globe);
+      if (scene === "civic" && app) showCivicLose(app, globe);
     } else if (ok) {
       startDrift(globe);
     }
@@ -305,6 +455,10 @@ export function boot(root, data) {
     score: () => score,
     mode: () => mode,
     challenges: () => data.challenges,
+    civic: () => civicBundle,
+    current: () => current,
+    facts: (app) => factsModel(app || current),
+    share: (app) => sharePayload(app || current, civicBundle),
     open: (id) => {
       const app = byId.get(id) || data.challenges[0];
       if (!app) return;
@@ -314,6 +468,10 @@ export function boot(root, data) {
     stackNow: () => openStack(globe),
     stacker: () => stacker,
     progress: () => loadProgress(),
+    showCivic: (id) => {
+      const app = (id && byId.get(id)) || current || data.challenges[0];
+      if (app) showCivicLose(app, globe);
+    },
   };
   return window.__cb;
 }
