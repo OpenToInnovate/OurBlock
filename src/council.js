@@ -1,9 +1,10 @@
 /** Our Block boot: landing → walk pins → talk → stacker. Desk stays dead. */
 
-import { createGlobe } from "./globe.js?v=ob6";
-import { talkLines, challengeSpec } from "./talk.js?v=ob6";
-import { createStacker } from "./stacker.js?v=ob6";
-import { loadProgress, saveChallenge, challengeId, recordOf } from "./progress.js?v=ob6";
+import { createGlobe } from "./globe.js?v=ob7";
+import { talkLines, challengeSpec } from "./talk.js?v=ob7";
+import { createStacker } from "./stacker.js?v=ob7";
+import { loadProgress, saveChallenge, challengeId, recordOf } from "./progress.js?v=ob7";
+import { unlockAudio } from "./stack-fx.js?v=ob7";
 
 const LONDON = { lng: -0.1, lat: 51.51, zoom: 11.15, pitch: 0, bearing: -12 };
 
@@ -263,7 +264,10 @@ export function boot(root, data) {
     }
   });
   $("talk-next")?.addEventListener("click", advanceTalk);
-  $("talk-stack")?.addEventListener("click", () => openStack(globe));
+  $("talk-stack")?.addEventListener("click", () => {
+    unlockAudio();
+    openStack(globe);
+  });
 
   paintScore();
   const bootScene = new URLSearchParams(location.search).get("scene");
