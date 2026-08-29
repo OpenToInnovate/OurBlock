@@ -1,6 +1,6 @@
 /** Our Block boot: landing → walk pins → talk → stacker. Desk stays dead. */
 
-import { createGlobe } from "./globe.js?v=ob8";
+import { createGlobe } from "./globe.js?v=ob16";
 import {
   talkLines,
   challengeSpec,
@@ -11,9 +11,9 @@ import {
   civicLoseLine,
   civicFailRetryLine,
   civicWinLine,
-} from "./talk.js?v=ob14";
+} from "./talk.js?v=ob15";
 import { createStacker } from "./stacker.js?v=ob14";
-import { loadProgress, saveChallenge, challengeId, recordOf } from "./progress.js?v=ob8";
+import { loadProgress, saveChallenge, challengeId, recordOf } from "./progress.js?v=ob16";
 import { unlockAudio } from "./stack-fx.js?v=ob14";
 
 const LONDON = { lng: -0.1, lat: 51.51, zoom: 11.15, pitch: 0, bearing: -12 };
@@ -33,6 +33,9 @@ let civicBundle = null;
 let civicIgnoreUntil = 0;
 let talkIgnoreUntil = 0;
 let stackPtrDown = false;
+let talkTimer = 0;
+let talkFull = "";
+let talkTyping = false;
 
 function $(id) {
   return document.getElementById(id);
@@ -50,7 +53,7 @@ export async function loadChallenges() {
   const soft = (p) => fetch(p).then((r) => (r.ok ? r.json() : null)).catch(() => null);
   const [boroughs, th, hospitals, civic] = await Promise.all([
     soft("./data/boroughs.json"),
-    fetch("./data/packs/tower-hamlets.json").then((r) => r.json()),
+    fetch("./data/packs/tower-hamlets.json?v=ob15").then((r) => r.json()),
     soft("./data/hospitals-london.json"),
     soft("./data/civic.json"),
   ]);
@@ -59,7 +62,7 @@ export async function loadChallenges() {
     .filter((b) => b.playable && b.slug !== "tower-hamlets")
     .map((b) => b.slug);
   const packs = await Promise.all(
-    slugs.map((s) => soft(`./data/packs/${s}.json`))
+    slugs.map((s) => soft(`./data/packs/${s}.json?v=ob15`))
   );
   const all = [th, ...packs.filter(Boolean)];
   const challenges = [];
@@ -91,6 +94,55 @@ function paintScore() {
   if (b) b.textContent = borough;
 }
 
+
+function stopTalkType() {
+  if (talkTimer) clearTimeout(talkTimer);
+  talkTimer = 0;
+  talkTyping = false;
+  $("talk-line")?.classList.remove("is-typing");
+}
+
+function finishTalkType() {
+  stopTalkType();
+  const el = $("talk-line");
+  if (el) el.textContent = talkFull;
+}
+
+function typeTalkLine(text) {
+  stopTalkType();
+  talkFull = String(text || "");
+  const el = $("talk-line");
+  if (!el) return;
+  const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+  if (reduce || !talkFull) {
+    el.textContent = talkFull;
+    return;
+  }
+  talkTyping = true;
+  el.classList.add("is-typing");
+  let i = 0;
+  el.textContent = "";
+  const tick = () => {
+    if (!talkTyping) return;
+    i += 1;
+    if (i >= talkFull.length) {
+      finishTalkType();
+      return;
+    }
+    el.textContent = talkFull.slice(0, i);
+    const ms = 20 + Math.floor(Math.random() * 9);
+    talkTimer = setTimeout(tick, ms);
+  };
+  talkTimer = setTimeout(tick, 20 + Math.floor(Math.random() * 9));
+}
+
+function paintTalkButtons() {
+  const last = lineIdx >= lines.length - 1;
+  $("talk-next").hidden = last;
+  $("talk-stack").hidden = !last;
+  if (last) $("talk-stack")?.focus();
+}
+
 function setMode(next, globe) {
   mode = next;
   const wrap = $("map-wrap");
@@ -104,6 +156,7 @@ function setMode(next, globe) {
   $("civic").hidden = next !== "civic";
   if (next !== "landing") stopDrift();
   if (next !== "stack") stopStackWander();
+  if (next !== "talk") stopTalkType();
   globe?.resize?.();
 }
 
@@ -162,7 +215,7 @@ function scoreLine(app) {
   if (!rec?.done) return "";
   const max = rec.max || 0;
   const pct = max ? Math.round((100 * rec.social) / max) : 0;
-  if (max && rec.social >= max) return `Perfect \u00b7 ${rec.social} / ${max} social homes. Stack again if you like.`;
+  if (max && rec.social >= max) return `Perfect · ${rec.social} / ${max} social homes. Stack again if you like.`;
   return `You stacked ${rec.social} / ${max} social homes (${pct}%). Have another go.`;
 }
 
@@ -218,33 +271,34 @@ function showTalk(app) {
   const chuffed = !mad && spec.aff != null && spec.aff >= 0.35;
   talkEl?.classList.toggle("is-mad", mad);
   talkEl?.classList.toggle("is-chuffed", chuffed);
-  lines = talkLines(app);
-  const score = scoreLine(app);
-  if (score) lines = [score, ...lines];
+  stopTalkType();
+  lines = talkLines(app).slice(0, 3);
   lineIdx = 0;
-  $("talk-line").textContent = lines[0] || "";
-  $("talk-next").hidden = lines.length <= 1;
-  $("talk-stack").hidden = lines.length > 1;
   const btn = $("talk-stack");
   if (btn) {
     const rec = recordOf(challengeId(app));
     btn.textContent = rec?.done ? "STACK AGAIN" : "STACK";
   }
+  paintTalkButtons();
+  typeTalkLine(lines[0] || "");
   fillFacts(app);
   paintScore();
   talkIgnoreUntil = performance.now() + 300;
 }
 
-function advanceTalk() {
-  lineIdx += 1;
-  if (lineIdx >= lines.length - 1) {
-    $("talk-line").textContent = lines[lines.length - 1] || "Let's get it stacked.";
-    $("talk-next").hidden = true;
-    $("talk-stack").hidden = false;
-    $("talk-stack").focus();
+function onTalkNext() {
+  if (talkTyping) {
+    finishTalkType();
     return;
   }
-  $("talk-line").textContent = lines[lineIdx];
+  advanceTalk();
+}
+
+function advanceTalk() {
+  if (lineIdx >= lines.length - 1) return;
+  lineIdx += 1;
+  paintTalkButtons();
+  typeTalkLine(lines[lineIdx] || "Let's get it stacked.");
 }
 
 function pickSceneApp(data) {
@@ -446,7 +500,7 @@ export function boot(root, data) {
       globe.flyToLngLat(LONDON.lng, LONDON.lat, { zoom: 11.6, pitch: 18, bearing: -14, duration: 1200 });
     }
   });
-  $("talk-next")?.addEventListener("click", advanceTalk);
+  $("talk-next")?.addEventListener("click", onTalkNext);
   $("talk-stack")?.addEventListener("click", () => {
     unlockAudio();
     openStack(globe);
@@ -460,7 +514,11 @@ export function boot(root, data) {
   });
   $("talk")?.addEventListener("click", (ev) => {
     if (ev.target.closest(".talk-facts")) return;
-    if (ev.target.closest(".talk-andy")) return;
+    if (ev.target.closest("#talk-next") || ev.target.closest("#talk-stack")) return;
+    if (ev.target.closest(".talk-andy") || ev.target.closest("#talk-line")) {
+      if (talkTyping) finishTalkType();
+      return;
+    }
     if (performance.now() < talkIgnoreUntil) return;
     setMode("walk", globe);
   });
