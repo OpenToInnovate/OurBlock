@@ -1,16 +1,18 @@
-import { loadData, boot } from "./game.js?v=desk4";
+import { loadChallenges, boot } from "./council.js?v=ob3";
 
 const root = document.querySelector("#desk");
 const status = document.querySelector("#boot-status");
 
 try {
-  const data = await loadData();
-  status.hidden = true;
+  const data = await loadChallenges();
+  if (status) status.textContent = `London \u00b7 ${data.challenges.length} challenges`;
   boot(root, data);
 } catch (err) {
-  status.hidden = false;
-  status.textContent =
-    "Could not load local JSON. Serve this folder over HTTP (python3 -m http.server) rather than opening the file directly. " +
-    (err && err.message ? err.message : String(err));
+  if (status) {
+    status.hidden = false;
+    status.textContent =
+      "Could not load local JSON. Serve this folder over HTTP. " +
+      (err && err.message ? err.message : String(err));
+  }
   console.error(err);
 }
