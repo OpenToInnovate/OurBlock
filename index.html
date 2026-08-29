@@ -27,7 +27,7 @@
     </div>
 
     <div id="landing" class="cb-screen">
-      <p class="cb-kicker">London \u00b7 social homes</p>
+      <p class="cb-kicker">London &middot; social homes</p>
       <h1 class="cb-wordmark">Our Block</h1>
       <p class="cb-tag">Walk the city. Stack homes for the list. Gold is the trap.</p>
       <button type="button" id="walk-london" class="cb-go">Walk London</button>
@@ -58,14 +58,14 @@
       <canvas id="stack-canvas"></canvas>
       <div id="stack-hud">
         <span id="stack-social">Social 0</span>
-        <span id="stack-hp" aria-label="lives">\u2665\u2665\u2665</span>
+        <span id="stack-hp" aria-label="lives">&hearts;&hearts;&hearts;</span>
         <span id="stack-floors">0 / 0</span>
       </div>
       <p id="stack-site"></p>
-      <p id="stack-hint">Tap to drop \u00b7 brick is homes \u00b7 glass is the trap</p>
+      <p id="stack-hint">Tap to drop &middot; brick is homes &middot; glass is the trap</p>
     </div>
 
-    <p id="boot-status">Loading London\u2026</p>
+    <p id="boot-status">Loading London&hellip;</p>
     <script>if (/[?&]scene=stack/.test(location.search)) { var el = document.getElementById("landing"); if (el) el.hidden = true; var w = document.getElementById("map-wrap"); if (w) w.classList.remove("is-landing"); }</script>
     <script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
     <script type="module" src="./src/main.js?v=ob3"></script>
