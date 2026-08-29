@@ -15,8 +15,8 @@
     <link rel="preconnect" href="https://unpkg.com" />
     <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin />
     <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css" />
-    <link rel="stylesheet" href="./css/desk.css?v=ob5" />
-    <link rel="stylesheet" href="./css/council.css?v=ob5" />
+    <link rel="stylesheet" href="./css/desk.css?v=ob6" />
+    <link rel="stylesheet" href="./css/council.css?v=ob6" />
   </head>
   <body class="cb">
     <div id="desk">
@@ -27,7 +27,7 @@
     </div>
 
     <div id="landing" class="cb-screen">
-      <p class="cb-kicker">London &middot; social homes</p>
+      <p class="cb-kicker">London · social homes</p>
       <h1 class="cb-wordmark">Our Block</h1>
       <p class="cb-tag">Walk the city. Stack homes for the list. Gold is the trap.</p>
       <button type="button" id="walk-london" class="cb-go">Walk London</button>
@@ -42,7 +42,7 @@
     </header>
 
     <aside id="talk" hidden>
-      <img id="talk-face" class="talk-face" src="./assets/faces/nurse.png" alt="Andy" width="72" height="72" />
+      <img id="talk-face" class="talk-face" src="./assets/faces/andy.png" alt="Andy" width="72" height="72" />
       <div class="talk-panel">
         <p class="talk-who">Andy</p>
         <p id="talk-line" class="talk-line"></p>
@@ -58,16 +58,16 @@
       <canvas id="stack-canvas"></canvas>
       <div id="stack-hud">
         <span id="stack-social">Social 0</span>
-        <span id="stack-hp" aria-label="lives">&hearts;&hearts;&hearts;</span>
+        <span id="stack-hp" aria-label="lives">♥♥♥</span>
         <span id="stack-floors">0 / 0</span>
       </div>
       <p id="stack-site"></p>
-      <p id="stack-hint">Tap to drop &middot; brick is homes &middot; glass is the trap</p>
+      <p id="stack-hint">Tap to drop · brick is homes · glass is the trap</p>
     </div>
 
-    <p id="boot-status">Loading London&hellip;</p>
+    <p id="boot-status">Loading London…</p>
     <script>if (/[?&]scene=stack/.test(location.search)) { var el = document.getElementById("landing"); if (el) el.hidden = true; var w = document.getElementById("map-wrap"); if (w) w.classList.remove("is-landing"); }</script>
     <script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
-    <script type="module" src="./src/main.js?v=ob5"></script>
+    <script type="module" src="./src/main.js?v=ob6"></script>
   </body>
 </html>
