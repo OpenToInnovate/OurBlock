@@ -1,6 +1,6 @@
 /** Our Block stacker. Crane at the top of the viewport. Pieces are storeys. */
 
-import { challengeSpec, floorKind, isLowSocial } from "./talk.js?v=ob12";
+import { challengeSpec, floorKind, isLowSocial } from "./talk.js?v=ob13";
 import { maxSocial } from "./progress.js?v=ob8";
 import {
   BLOCK_H,
@@ -8,23 +8,38 @@ import {
   drawPlinth,
   drawHook,
   drawDebris,
-} from "./stack-draw.js?v=ob8";
+  plinthSize,
+  drawRoofGhost,
+  drawSeamFlash,
+} from "./stack-draw.js?v=ob13";
 import {
   playCheer,
   playLose,
   playRelease,
   playThud,
   playSmash,
+  playPerfect,
+  playGlassChime,
   unlockAudio,
   spawnBurst,
+  spawnDust,
   updateParticles,
   drawParticles,
-} from "./stack-fx.js?v=ob8";
+} from "./stack-fx.js?v=ob13";
 
 const HOOK_Y = 22;
 const CABLE = 44;
 const MIN_OVERLAP = 12;
 const RUBBLE_PX = 40;
+const G = 2480;
+const HANG_T = 0.055;
+const SQUASH_T = 0.16;
+const LAND_BAND = 0.45;
+const LAND_LO = 0.38;
+const LAND_HI = 0.52;
+const THUMB_PX = 72;
+const PARTICLE_CAP = 24;
+const DEBRIS_CAP = 8;
 
 function baseWidth(spec, canvasW) {
   let w = Math.min(248, Math.round(canvasW * 0.44));
@@ -46,6 +61,7 @@ function stampPiece(kind, x, w, y, extra = {}) {
     y,
     h: BLOCK_H,
     vy: 0,
+    squashT: extra.squashT || 0,
     textureOriginX: extra.textureOriginX ?? 0,
     u0: extra.u0 ?? 0,
     fullWidth: extra.fullWidth ?? w,
@@ -88,6 +104,20 @@ export function createStacker(canvas, app, onDone) {
   let skipWin = false;
   let endSent = false;
   let endWon = false;
+  let swingOff = 0;
+  let swingDir = 1;
+  let hangT = 0;
+  let hitchT = 0;
+  let hitchPending = false;
+  let hitStop = 0;
+  let seamT = 0;
+  let seamX = 0;
+  let seamY = 0;
+  let seamW = 0;
+  let stampT = 0;
+  let stampLuxury = false;
+  let failT = 0;
+  let failTitleY = 0;
 
   function viewportSize() {
     const host = canvas.parentElement || canvas;
@@ -98,20 +128,22 @@ export function createStacker(canvas, app, onDone) {
   }
 
   function resize() {
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
     const sz = viewportSize();
     W = sz.w;
     H = sz.h;
+    let dpr = Math.min(2, window.devicePixelRatio || 1);
+    if (W <= 430) dpr = Math.min(1.5, dpr);
     canvas.width = Math.round(W * dpr);
     canvas.height = Math.round(H * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
-  function hookSpeed() {
-    let s = 1.08 + stacked.length * 0.05;
-    if (spec.luxury) s *= 1.22;
-    if (drop && drop.kind === "luxury") s *= 1.12;
-    return Math.min(2.15, s);
+  /** Constant px/s. No sin. */
+  function hookPxS() {
+    let v = 96 + stacked.length * 7;
+    if (spec.luxury) v *= 1.18;
+    if (drop && drop.kind === "luxury") v *= 1.10;
+    return v;
   }
 
   function swingAmp() {
@@ -129,8 +161,39 @@ export function createStacker(canvas, app, onDone) {
       : { textureOriginX: 0, u0: 0, fullWidth: w });
   }
 
+  function capParticles() {
+    while (particles.length > PARTICLE_CAP) particles.shift();
+  }
+
+  function capDebris() {
+    while (debris.length > DEBRIS_CAP) debris.shift();
+  }
+
+  function stepSwing(dt) {
+    const amp = swingAmp();
+    swingOff += swingDir * hookPxS() * dt;
+    if (swingOff > amp) {
+      swingOff = amp;
+      swingDir = -1;
+    } else if (swingOff < -amp) {
+      swingOff = -amp;
+      swingDir = 1;
+    }
+  }
+
   function swingX() {
-    return W / 2 + Math.sin(t * hookSpeed()) * swingAmp() - (drop ? drop.w / 2 : 0);
+    return W / 2 + swingOff - (drop ? drop.w / 2 : 0);
+  }
+
+  function padPrev() {
+    if (stacked.length) return stacked[stacked.length - 1];
+    const p = plinthSize(spec, W);
+    return { x: p.px, w: p.pw, y: plinthTop(H), isPlinth: true };
+  }
+
+  function ghostPad() {
+    const prev = padPrev();
+    return { x: prev.x, w: prev.w, y: nextLandY() };
   }
 
   function paintHud() {
@@ -167,10 +230,11 @@ export function createStacker(canvas, app, onDone) {
     winT = 0;
     winShown = 0;
     skipWin = false;
-    spawnBurst(particles, W, H, W * 0.5, H * 0.28, 42);
-    spawnBurst(particles, W, H, W * 0.22, H * 0.2, 28);
-    spawnBurst(particles, W, H, W * 0.78, H * 0.22, 28);
-    spawnBurst(particles, W, H, W * 0.4, H * 0.16, 18);
+    spawnBurst(particles, W, H, W * 0.5, H * 0.28, 16);
+    spawnBurst(particles, W, H, W * 0.22, H * 0.2, 10);
+    spawnBurst(particles, W, H, W * 0.78, H * 0.22, 10);
+    spawnBurst(particles, W, H, W * 0.4, H * 0.16, 8);
+    capParticles();
     playCheer();
   }
 
@@ -206,7 +270,7 @@ export function createStacker(canvas, app, onDone) {
   function impulseTower(block, prev, chopped, perfect) {
     const widthFeel = Math.min(1.35, block.w / 160);
     let punch = 2.2 * widthFeel;
-    if (!prev) punch *= 1.4;
+    if (prev?.isPlinth) punch *= 1.4;
     if (perfect) punch *= 0.5;
     if (chopped > 4) punch *= 1.28;
     const mid = block.x + block.w / 2;
@@ -215,8 +279,8 @@ export function createStacker(canvas, app, onDone) {
     const side = off !== 0 ? Math.sign(off) : chopped > 4 ? (block.x < W / 2 ? -1 : 1) : 0;
     shakeVx += off * 0.35 + side * (chopped > 4 ? 22 : 6) * widthFeel;
     shakeVrot += off * 0.0018 + side * (chopped > 4 ? 0.14 : 0.04);
-    shakeSq += Math.min(2, 0.7 * punch);
-    shakeVsq += 8 * punch;
+    shakeSq = Math.min(7, 2.2 * punch);
+    shakeVsq = 0;
   }
 
   function stepShake(dt) {
@@ -256,6 +320,9 @@ export function createStacker(canvas, app, onDone) {
     bit.vr = side * (1.8 + Math.random() * 1.6);
     bit.falling = true;
     debris.push(bit);
+    capDebris();
+    spawnDust(particles, x + w / 2, y + cam + BLOCK_H * 0.5, 8);
+    capParticles();
   }
 
   function applyWaste(px) {
@@ -263,66 +330,80 @@ export function createStacker(canvas, app, onDone) {
     rubblePx += px;
     const waste = Math.max(1, Math.round(px / RUBBLE_PX));
     social = Math.max(0, social - waste);
-    flash = `Rubble \u2212${waste}`;
-    flashT = 1.05;
     return waste;
   }
 
   function land(block, x, y, prev) {
+    const pad = prev || padPrev();
     let nx = x;
     let nw = block.w;
     let u0 = block.u0 || 0;
     let perfect = true;
     let chopped = 0;
-    if (prev) {
-      const left = Math.max(x, prev.x);
-      const right = Math.min(x + block.w, prev.x + prev.w);
-      const overlap = right - left;
-      if (overlap < MIN_OVERLAP) return false;
-      const leftHang = left - x;
-      const rightHang = x + block.w - right;
-      if (leftHang > 4) {
-        spawnSlice(block, x, leftHang, block.u0 || 0, -1, y);
-        chopped += leftHang;
-      }
-      if (rightHang > 4) {
-        spawnSlice(block, right, rightHang, (block.u0 || 0) + (right - x), 1, y);
-        chopped += rightHang;
-      }
-      nx = left;
-      nw = overlap;
-      u0 = (block.u0 || 0) + (left - x);
-      perfect = Math.abs(x - prev.x) < 7 && Math.abs(block.w - prev.w) < 10 && chopped < 8;
+    const left = Math.max(x, pad.x);
+    const right = Math.min(x + block.w, pad.x + pad.w);
+    const overlap = right - left;
+    if (overlap < MIN_OVERLAP) return false;
+    const leftHang = left - x;
+    const rightHang = x + block.w - right;
+    if (leftHang > 4) {
+      spawnSlice(block, x, leftHang, block.u0 || 0, -1, y);
+      chopped += leftHang;
+    }
+    if (rightHang > 4) {
+      spawnSlice(block, right, rightHang, (block.u0 || 0) + (right - x), 1, y);
+      chopped += rightHang;
+    }
+    nx = left;
+    nw = overlap;
+    u0 = (block.u0 || 0) + (left - x);
+    if (pad.isPlinth) {
+      const dc = Math.abs((x + block.w / 2) - (pad.x + pad.w / 2));
+      perfect = chopped < 8 && dc < 7;
+    } else {
+      perfect = Math.abs(x - pad.x) < 7 && Math.abs(block.w - pad.w) < 10 && chopped < 8;
     }
     stacked.push(stampPiece(block.kind, nx, nw, y, {
       textureOriginX: block.textureOriginX,
       u0,
       fullWidth: block.fullWidth || block.w,
+      squashT: SQUASH_T,
+      squashAmt: pad.isPlinth ? 0.24 : 0.16,
     }));
+    if (perfect) {
+      hitchT = 0.09;
+      spawnBurst(particles, W, H, nx + nw / 2, y + cam, 8);
+      capParticles();
+      seamT = 0.2;
+      if (block.kind === "luxury") playGlassChime();
+      else playPerfect();
+    }
     if (block.kind === "social") {
       const gain = spec.homesPerLime || 1;
       social += gain;
       if (perfect) {
         combo += 1;
         social += 2 + Math.max(0, combo - 1);
-        flash = combo > 1 ? `Perfect \u00d7${combo}` : "Perfect \u00b7 social";
+        flash = combo > 1 ? String(combo) : "";
+        flashT = combo > 1 ? 0.9 : 0;
       } else {
         combo = 0;
-        flash = `+${gain} social`;
+        flash = "";
+        flashT = 0;
       }
-      flashT = 0.9;
-    } else if (block.kind === "luxury") {
-      combo = 0;
-      flash = perfect ? "Landed glass. 0 homes." : "Private floor. 0 for the list.";
-      flashT = 0.9;
     } else {
       combo = 0;
-      flash = perfect ? "Mixed floor. Still private." : "Buff brick. 0 for the list.";
-      flashT = 0.9;
+      flash = "";
+      flashT = 0;
     }
     const landed = stacked[stacked.length - 1];
-    impulseTower(landed, prev, chopped, perfect);
-    playThud(prev ? {} : { heavy: true });
+    if (perfect) {
+      seamX = landed.x;
+      seamY = landed.y + BLOCK_H;
+      seamW = landed.w;
+    }
+    impulseTower(landed, pad, chopped, perfect);
+    playThud(pad.isPlinth ? { heavy: true } : {});
     if (chopped > 4) playSmash();
     if (chopped >= 6) applyWaste(chopped);
     if (stacked.length >= spec.floors) finish(true);
@@ -334,18 +415,63 @@ export function createStacker(canvas, app, onDone) {
     return true;
   }
 
+  function tossPiece(src, extraVy) {
+    const side = src.x + src.w / 2 < W / 2 ? -1 : 1;
+    const bit = stampPiece(src.kind, src.x, src.w, src.y, {
+      textureOriginX: src.textureOriginX,
+      u0: src.u0 || 0,
+      fullWidth: src.fullWidth || src.w,
+    });
+    bit.side = side;
+    bit.vx = side * (70 + Math.random() * 90) + (Math.random() - 0.5) * 40;
+    bit.vy = (extraVy != null ? extraVy : -40) + Math.random() * 50;
+    bit.rot = 0;
+    bit.vr = side * (1.4 + Math.random() * 1.8);
+    bit.falling = true;
+    debris.push(bit);
+    capDebris();
+  }
+
+  function toppleStack() {
+    const n = stacked.length;
+    for (let i = 0; i < n; i++) {
+      const b = stacked[i];
+      const side = (i % 2 ? 1 : -1) * (b.x + b.w / 2 < W / 2 ? -1 : 1);
+      b.side = side;
+      b.vx = side * (50 + Math.random() * 90) + (Math.random() - 0.5) * 50;
+      b.vy = -90 - Math.random() * 110 - (n - i) * 12;
+      b.rot = 0;
+      b.vr = side * (0.9 + Math.random() * 2.4);
+      b.falling = true;
+      debris.push(b);
+    }
+    stacked = [];
+    capDebris();
+    resetShake();
+  }
+
   function miss() {
     if (drop) {
-      spawnSlice(drop, drop.x, Math.max(18, drop.w * 0.45), drop.u0 || 0, drop.x + drop.w / 2 < W / 2 ? -1 : 1, drop.y);
+      tossPiece(drop, 40);
+      spawnDust(particles, drop.x + drop.w / 2, drop.y + cam + BLOCK_H * 0.4, 10);
       playSmash();
     }
     hp -= 1;
     combo = 0;
-    flash = "Miss";
-    flashT = 0.7;
+    hitchPending = false;
+    flash = "";
+    flashT = 0;
     paintHud();
-    if (hp <= 0) finish(false);
-    else {
+    drop = null;
+    if (hp <= 0) {
+      toppleStack();
+      phase = "fail";
+      failT = 0;
+      failTitleY = -80;
+      over = true;
+      endWon = false;
+      playLose();
+    } else {
       phase = "swing";
       drop = makeBlock();
     }
@@ -357,10 +483,22 @@ export function createStacker(canvas, app, onDone) {
     return plinthTop(H) - BLOCK_H;
   }
 
+  function desiredCam() {
+    const land = nextLandY();
+    let c = H * LAND_BAND - land;
+    const screenLand = land + c;
+    if (screenLand < H * LAND_LO) c = H * LAND_LO - land;
+    if (screenLand > H * LAND_HI) c = H * LAND_HI - land;
+    const roofTop = land + BLOCK_H;
+    const maxCam = H - THUMB_PX - roofTop - 4;
+    if (c > maxCam) c = maxCam;
+    return c;
+  }
+
   function stepDebris(dt) {
     for (let i = debris.length - 1; i >= 0; i--) {
       const d = debris[i];
-      d.vy += 1680 * dt;
+      d.vy += G * dt;
       d.x += (d.vx || 0) * dt;
       d.y += d.vy * dt;
       d.rot = (d.rot || 0) + (d.vr || 0) * dt;
@@ -398,25 +536,49 @@ export function createStacker(canvas, app, onDone) {
     if (winT >= 3 || skipWin) sendDone(true);
   }
 
-  function drawLose() {
-    ctx.fillStyle = "rgba(13,27,22,0.4)";
-    ctx.fillRect(0, H * 0.38, W, 72);
-    ctx.fillStyle = "#ff8a8a";
-    ctx.font = "700 28px Fredoka, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("FALLEN", W / 2, H * 0.38 + 46);
+  function drawStoreySquash(b, isTop, skipCourses) {
+    const amt = b.squashAmt || 0;
+    if (b.squashT > 0 && amt > 0) {
+      const k = Math.max(0, Math.min(1, b.squashT / SQUASH_T));
+      const sy = 1 - amt * k;
+      ctx.save();
+      ctx.translate(b.x + b.w / 2, b.y + BLOCK_H);
+      ctx.scale(1, sy);
+      ctx.translate(-(b.x + b.w / 2), -(b.y + BLOCK_H));
+      drawStorey(ctx, b, b.y, spec, isTop, skipCourses);
+      ctx.restore();
+    } else {
+      drawStorey(ctx, b, b.y, spec, isTop, skipCourses);
+    }
   }
 
   function draw(dt) {
+    if (hitchT > 0) {
+      hitchT = Math.max(0, hitchT - dt);
+      dt = 0;
+    }
     t += dt;
     if (flashT > 0) flashT -= dt;
+    if (seamT > 0) seamT -= dt;
+    if (stampT > 0) stampT -= dt;
+    for (const b of stacked) {
+      if (b.squashT > 0) b.squashT = Math.max(0, b.squashT - dt);
+    }
+    if (phase === "swing" || phase === "hang") stepSwing(dt);
+    if (phase === "hang") {
+      hangT -= dt;
+      if (hangT <= 0 && drop) {
+        phase = "drop";
+        drop.y = HOOK_Y + CABLE - cam + 7;
+        drop.vy = 260;
+      }
+    }
     stepDebris(dt);
     stepShake(dt);
     updateParticles(particles, dt);
     ctx.clearRect(0, 0, W, H);
 
-    const topY = stacked.length ? stacked[stacked.length - 1].y : plinthTop(H);
-    const wantCam = H * 0.42 - topY;
+    const wantCam = desiredCam();
     cam += (wantCam - cam) * Math.min(1, dt * 4);
 
     ctx.save();
@@ -433,20 +595,27 @@ export function createStacker(canvas, app, onDone) {
       ctx.rotate(shakeRot);
       ctx.translate(-cx, -foot);
     }
+    const skipCourses = stacked.length > 10;
     for (let i = 0; i < stacked.length; i++) {
-      drawStorey(ctx, stacked[i], stacked[i].y, spec, i === stacked.length - 1 && phase !== "drop");
+      const isTop = i === stacked.length - 1 && phase !== "drop" && phase !== "hang";
+      drawStoreySquash(stacked[i], isTop, !isTop && skipCourses);
     }
+    if ((phase === "swing" || phase === "hang") && drop) {
+      const roofY = stacked.length ? stacked[stacked.length - 1].y : plinthTop(H);
+      drawRoofGhost(ctx, drop.x, roofY, drop.w);
+    }
+    if (seamT > 0) drawSeamFlash(ctx, seamX, seamY, seamW, seamT / 0.12);
     ctx.restore();
 
     if (phase === "drop" && drop) {
       if (!frozen) {
-        drop.vy = (drop.vy || 0) + 1760 * dt;
+        drop.vy = (drop.vy || 0) + G * dt;
         drop.y += drop.vy * dt;
       }
-      drawStorey(ctx, drop, drop.y, spec, true);
+      drawStorey(ctx, drop, drop.y, spec, true, false);
       const target = nextLandY();
       if (drop.y >= target) {
-        const prev = stacked[stacked.length - 1];
+        const prev = padPrev();
         const ok = land(drop, drop.x, target, prev);
         if (!ok) miss();
       } else if (drop.y > plinthTop(H) + 80) {
@@ -456,33 +625,37 @@ export function createStacker(canvas, app, onDone) {
 
     ctx.restore();
 
-    if (phase === "swing" && drop) {
+    if ((phase === "swing" || phase === "hang") && drop) {
       drop.x = swingX();
       const sy = HOOK_Y + CABLE;
+      const stretch = phase === "hang" ? 7 * (1 - Math.max(0, hangT) / HANG_T) : 0;
       drawHook(ctx, W, drop.x + drop.w / 2, sy);
-      drawStorey(ctx, drop, sy, spec, true);
+      drawStorey(ctx, { ...drop, h: BLOCK_H + stretch }, sy, spec, true, false);
     } else if (phase === "drop" && drop) {
       drawHook(ctx, W, drop.x + drop.w / 2, Math.min(HOOK_Y + CABLE, drop.y + cam));
     } else {
-      drawHook(ctx, W, W / 2, HOOK_Y + CABLE);
+      drawHook(ctx, W, W / 2 + swingOff, HOOK_Y + CABLE);
     }
 
     drawParticles(ctx, particles);
 
-    if (flashT > 0 && flash && phase !== "win") {
-      ctx.fillStyle = flash.startsWith("Rubble") ? "#ffb4a0" : "#e8f6dc";
+    if (flashT > 0 && flash && phase !== "win" && phase !== "fail") {
+      ctx.fillStyle = "#c8f542";
       ctx.font = "700 22px Fredoka, sans-serif";
       ctx.textAlign = "center";
       ctx.shadowColor = "#000";
       ctx.shadowBlur = 8;
-      ctx.fillText(flash, W / 2, 108);
+      ctx.fillText(flash, W / 2, 92);
       ctx.shadowBlur = 0;
     }
     if (phase === "win") drawWin(dt);
-    else if (phase === "civic") {
+    else if (phase === "fail") {
+      failT += dt;
+      if (failT >= 0.72) sendDone(false);
+    } else if (phase === "civic") {
       ctx.fillStyle = "rgba(8, 16, 12, 0.35)";
       ctx.fillRect(0, 0, W, H);
-    } else if (phase === "lose") drawLose();
+    }
   }
 
   function frame(now) {
@@ -502,10 +675,15 @@ export function createStacker(canvas, app, onDone) {
       sendDone(endWon);
       return;
     }
+    if (phase === "fail") {
+      if (failT >= 0.7) sendDone(false);
+      return;
+    }
     if (!armed || over || phase !== "swing" || !drop) return;
-    phase = "drop";
+    phase = "hang";
+    hangT = HANG_T;
     drop.y = HOOK_Y + CABLE - cam;
-    drop.vy = 50;
+    drop.vy = 0;
     unlockAudio().then(() => playRelease());
   }
 
@@ -544,8 +722,7 @@ export function createStacker(canvas, app, onDone) {
     const civic = full && isLowSocial(app, spec);
     phase = civic ? "civic" : full ? "win" : "swing";
     drop = phase === "swing" ? makeBlock() : null;
-    const topY = stacked.length ? stacked[stacked.length - 1].y : plinthTop(H);
-    cam = H * 0.42 - topY;
+    cam = desiredCam();
     if (phase === "win") {
       over = true;
       endWon = true;
@@ -565,17 +742,19 @@ export function createStacker(canvas, app, onDone) {
     drop.y = H * 0.22 - cam;
     drop.vy = opts.freeze ? 0 : 180;
     phase = "drop";
+    hangT = 0;
     if (opts.freeze) frozen = true;
   }
 
   function debugChopDrop() {
     if (!drop) drop = makeBlock();
-    const prev = stacked[stacked.length - 1];
-    const ox = prev ? prev.x + Math.max(28, prev.w * 0.28) : W / 2 - drop.w / 2 + 36;
+    const prev = padPrev();
+    const ox = prev.x + Math.max(28, prev.w * 0.28);
     drop.x = ox;
     drop.y = nextLandY() - 8;
     drop.vy = 80;
     phase = "drop";
+    hangT = 0;
     frozen = false;
   }
 
@@ -607,10 +786,19 @@ export function createStacker(canvas, app, onDone) {
     resetShake();
     phase = "swing";
     t = 0;
-    cam = 0;
     winT = 0;
     skipWin = false;
+    swingOff = -swingAmp() * 0.65;
+    swingDir = 1;
+    hitchT = 0;
+    hitchPending = false;
+    hangT = 0;
+    hitStop = 0;
+    seamT = 0;
+    stampT = 0;
+    failT = 0;
     drop = makeBlock();
+    cam = desiredCam();
     armed = false;
     paintHud();
     last = performance.now();
