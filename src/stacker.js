@@ -1,6 +1,6 @@
 /** Our Block stacker. Crane at the top of the viewport. Pieces are storeys. */
 
-import { challengeSpec, floorKind, isLowSocial } from "./talk.js?v=ob13";
+import { challengeSpec, floorKind, isLowSocial } from "./talk.js?v=ob14";
 import { maxSocial } from "./progress.js?v=ob8";
 import {
   BLOCK_H,
@@ -11,7 +11,7 @@ import {
   plinthSize,
   drawRoofGhost,
   drawSeamFlash,
-} from "./stack-draw.js?v=ob13";
+} from "./stack-draw.js?v=ob14";
 import {
   playCheer,
   playLose,
@@ -25,9 +25,10 @@ import {
   spawnDust,
   updateParticles,
   drawParticles,
-} from "./stack-fx.js?v=ob13";
+} from "./stack-fx.js?v=ob14";
 
-const HOOK_Y = 22;
+const HOOK_TOP = 40;
+const HOOK_Y = HOOK_TOP + 22;
 const CABLE = 44;
 const MIN_OVERLAP = 12;
 const RUBBLE_PX = 40;
@@ -39,7 +40,7 @@ const LAND_LO = 0.38;
 const LAND_HI = 0.52;
 const THUMB_PX = 72;
 const PARTICLE_CAP = 24;
-const DEBRIS_CAP = 8;
+const DEBRIS_CAP = 12;
 
 function baseWidth(spec, canvasW) {
   let w = Math.min(248, Math.round(canvasW * 0.44));
@@ -222,8 +223,8 @@ export function createStacker(canvas, app, onDone) {
   function sendDone(won) {
     if (endSent) return;
     endSent = true;
-    stop();
     onDone(result(won));
+    stop();
   }
 
   function startWinFx() {
@@ -585,7 +586,6 @@ export function createStacker(canvas, app, onDone) {
     ctx.translate(0, cam);
 
     drawPlinth(ctx, spec, W, plinthTop(H));
-    for (const d of debris) drawDebris(ctx, d, spec);
     ctx.save();
     if (stacked.length) {
       const b0 = stacked[0];
@@ -606,6 +606,7 @@ export function createStacker(canvas, app, onDone) {
     }
     if (seamT > 0) drawSeamFlash(ctx, seamX, seamY, seamW, seamT / 0.12);
     ctx.restore();
+    for (const d of debris) drawDebris(ctx, d, spec);
 
     if (phase === "drop" && drop) {
       if (!frozen) {
@@ -629,12 +630,12 @@ export function createStacker(canvas, app, onDone) {
       drop.x = swingX();
       const sy = HOOK_Y + CABLE;
       const stretch = phase === "hang" ? 7 * (1 - Math.max(0, hangT) / HANG_T) : 0;
-      drawHook(ctx, W, drop.x + drop.w / 2, sy);
+      drawHook(ctx, W, drop.x + drop.w / 2, sy, HOOK_TOP);
       drawStorey(ctx, { ...drop, h: BLOCK_H + stretch }, sy, spec, true, false);
     } else if (phase === "drop" && drop) {
-      drawHook(ctx, W, drop.x + drop.w / 2, Math.min(HOOK_Y + CABLE, drop.y + cam));
+      drawHook(ctx, W, drop.x + drop.w / 2, Math.min(HOOK_Y + CABLE, drop.y + cam), HOOK_TOP);
     } else {
-      drawHook(ctx, W, W / 2 + swingOff, HOOK_Y + CABLE);
+      drawHook(ctx, W, W / 2 + swingOff, HOOK_Y + CABLE, HOOK_TOP);
     }
 
     drawParticles(ctx, particles);
@@ -672,11 +673,9 @@ export function createStacker(canvas, app, onDone) {
       return;
     }
     if (phase === "civic") {
-      sendDone(endWon);
       return;
     }
     if (phase === "fail") {
-      if (failT >= 0.7) sendDone(false);
       return;
     }
     if (!armed || over || phase !== "swing" || !drop) return;
