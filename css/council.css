@@ -1,0 +1,327 @@
+/* Our Block — console overlay on the London map. Desk HUD stays dead. */
+
+body.cb {
+  background: #0d1b16;
+  color: #e8f0e4;
+  overflow: hidden;
+}
+
+body.cb #desk {
+  display: block;
+  position: fixed;
+  inset: 0;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+
+body.cb #chrome,
+body.cb #homebar,
+body.cb #side,
+body.cb footer.site,
+body.cb #table,
+body.cb #end,
+body.cb .layers,
+body.cb #street-card,
+body.cb #cam-hint,
+body.cb #view-mode,
+body.cb #mute,
+body.cb #reset-view,
+body.cb #massing-note,
+body.cb #map {
+  display: none !important;
+}
+
+body.cb #map-wrap {
+  position: fixed;
+  inset: 0;
+  border: 0;
+  min-height: 100dvh;
+  height: 100dvh;
+  background: #efece6;
+}
+
+body.cb #gl-map,
+body.cb #gl-map .maplibregl-map {
+  width: 100%;
+  height: 100%;
+}
+
+body.cb #map-wrap.is-landing #gl-map {
+  filter: blur(7px) saturate(0.82) brightness(0.92);
+  transform: scale(1.1);
+  transition: filter 0.6s ease;
+}
+
+body.cb #map-wrap.is-walk #gl-map {
+  filter: none;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.cb #map-wrap.is-landing #gl-map {
+    filter: blur(4px) saturate(0.88);
+    transform: scale(1.04);
+  }
+}
+
+#boot-status {
+  position: fixed;
+  inset: auto 16px 16px;
+  z-index: 80;
+  margin: 0;
+  padding: 8px 12px;
+  color: #cfe0c4;
+  background: #0d1b16cc;
+  border: 2px solid #2a4a38;
+  font-size: 13px;
+}
+
+#landing.cb-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+  background: radial-gradient(ellipse at 50% 42%, #0d1b1688 0%, #0d1b16cc 70%);
+  pointer-events: auto;
+}
+
+#landing[hidden] { display: none !important; }
+
+.cb-kicker {
+  margin: 0 0 8px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  font-size: 11px;
+  color: #9ec98a;
+}
+
+.cb-wordmark {
+  margin: 0;
+  font-family: "Fredoka", ui-rounded, sans-serif;
+  font-weight: 700;
+  font-size: clamp(48px, 12vw, 92px);
+  letter-spacing: -0.04em;
+  line-height: 0.92;
+  color: #e8f6dc;
+  text-shadow: 0 4px 0 #1a3a28, 0 10px 28px #0008;
+}
+
+.cb-tag {
+  margin: 18px 0 28px;
+  max-width: 28ch;
+  color: #c5d6bc;
+  font-size: 15px;
+}
+
+.cb-go {
+  appearance: none;
+  border: 3px solid #c8f542;
+  background: #1a3a22;
+  color: #c8f542;
+  font-family: "Fredoka", ui-rounded, sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 12px 28px;
+  cursor: pointer;
+  box-shadow: 0 4px 0 #0a1810, 0 0 24px #c8f54233;
+}
+
+.cb-go:active { transform: translateY(2px); box-shadow: 0 2px 0 #0a1810; }
+
+.cb-quiet {
+  appearance: none;
+  border: 2px solid #3a5a44;
+  background: transparent;
+  color: #cfe0c4;
+  font: 600 13px/1 "Nunito", sans-serif;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+#walk-hud {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 25;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 12px 16px;
+  pointer-events: none;
+  background: linear-gradient(180deg, #0d1b16cc 0%, transparent 100%);
+}
+
+#walk-hud[hidden] { display: none !important; }
+
+.cb-score-label {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #9ec98a;
+}
+
+.cb-score b {
+  font-family: "Fredoka", ui-rounded, sans-serif;
+  font-size: 28px;
+  color: #c8f542;
+  line-height: 1;
+}
+
+.cb-boro {
+  font-family: "Fredoka", ui-rounded, sans-serif;
+  font-size: 14px;
+  color: #e8f0e4;
+  padding: 6px 10px;
+  border: 2px solid #2a4a38;
+  background: #0d1b16aa;
+}
+
+#talk {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: 16px;
+  z-index: 35;
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  pointer-events: none;
+}
+
+#talk:not([hidden]) { pointer-events: auto; }
+#talk[hidden] { display: none !important; }
+
+.talk-face {
+  width: 76px;
+  height: 76px;
+  object-fit: cover;
+  object-position: 50% 18%;
+  border: 3px solid #c8f542;
+  background: #1a3a22;
+  border-radius: 8px;
+  flex: 0 0 auto;
+}
+
+.talk-panel {
+  flex: 1;
+  min-width: 0;
+  background: #101a14ee;
+  border: 3px solid #c8f542;
+  padding: 10px 12px 12px;
+  box-shadow: 0 8px 0 #0a1810;
+}
+
+.talk-who {
+  margin: 0 0 4px;
+  font-family: "Fredoka", sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #c8f542;
+}
+
+.talk-line {
+  margin: 0 0 10px;
+  font-size: 15px;
+  line-height: 1.35;
+  color: #e8f6dc;
+  min-height: 2.7em;
+}
+
+.talk-row { display: flex; gap: 8px; justify-content: flex-end; }
+
+body.cb #map-wrap.is-stack #gl-map,
+body.cb #map-wrap.is-stack #gl-map .maplibregl-map,
+body.cb #map-wrap.is-stack #gl-map canvas {
+  visibility: visible !important;
+  opacity: 1 !important;
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  filter: none;
+  transform: none;
+}
+body.cb #map-wrap.is-stack.is-2d #gl-map {
+  visibility: visible !important;
+}
+
+#stack {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  background: transparent;
+}
+
+#stack[hidden] { display: none !important; }
+
+#stack-haze {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  background: rgba(13, 27, 22, 0.2);
+}
+
+#stack-canvas {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+}
+
+#stack-hud {
+  z-index: 2;
+  position: absolute;
+  top: 28px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  justify-content: space-between;
+  font-family: "Fredoka", sans-serif;
+  font-size: 16px;
+  color: #c8f542;
+  pointer-events: none;
+  text-shadow: 0 2px 0 #0008;
+}
+
+#stack-hp { color: #ff6b6b; letter-spacing: 2px; }
+
+#stack-hint,
+#stack-site {
+  position: absolute;
+  z-index: 2;
+  left: 16px;
+  right: 16px;
+  text-align: center;
+  margin: 0;
+  color: #c5d6bc;
+  font-size: 12px;
+  pointer-events: none;
+  text-shadow: 0 1px 2px #000a;
+}
+
+#stack-hint { bottom: 14px; }
+
+#stack-site {
+  bottom: 34px;
+  color: #e8f6dc;
+  font-family: "Fredoka", sans-serif;
+  font-size: 13px;
+}
+
+body.cb .maplibregl-ctrl-top-left { top: 58px; }
+body.cb .maplibregl-ctrl-attrib { display: none; }
