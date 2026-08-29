@@ -325,3 +325,25 @@ body.cb #map-wrap.is-stack.is-2d #gl-map {
 
 body.cb .maplibregl-ctrl-top-left { top: 58px; }
 body.cb .maplibregl-ctrl-attrib { display: none; }
+
+#talk.is-mad .talk-face,
+#talk.is-mad .talk-panel {
+  border-color: #ff7a3a;
+}
+
+#talk.is-mad .talk-panel {
+  box-shadow: 0 8px 0 #3a1408;
+}
+
+#talk.is-mad .talk-who {
+  color: #ff8a4a;
+}
+
+#talk.is-chuffed .talk-face,
+#talk.is-chuffed .talk-panel {
+  border-color: #c8f542;
+}
+
+#talk.is-chuffed .talk-who {
+  color: #c8f542;
+}
