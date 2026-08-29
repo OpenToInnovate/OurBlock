@@ -1,24 +1,25 @@
 /** Our Block stacker. Crane at the top of the viewport. Pieces are storeys. */
 
-import { challengeSpec, floorKind } from "./talk.js?v=ob6";
-import { maxSocial } from "./progress.js?v=ob6";
+import { challengeSpec, floorKind } from "./talk.js?v=ob7";
+import { maxSocial } from "./progress.js?v=ob7";
 import {
   BLOCK_H,
   drawStorey,
   drawPlinth,
   drawHook,
   drawDebris,
-} from "./stack-draw.js?v=ob6";
+} from "./stack-draw.js?v=ob7";
 import {
   playCheer,
   playLose,
   playRelease,
   playThud,
   playSmash,
+  unlockAudio,
   spawnBurst,
   updateParticles,
   drawParticles,
-} from "./stack-fx.js?v=ob6";
+} from "./stack-fx.js?v=ob7";
 
 const HOOK_Y = 22;
 const CABLE = 44;
@@ -65,8 +66,13 @@ export function createStacker(canvas, app, onDone) {
   let rubblePx = 0;
   let stacked = [];
   let debris = [];
-  let rubble = [];
   let particles = [];
+  let shakeX = 0;
+  let shakeVx = 0;
+  let shakeRot = 0;
+  let shakeVrot = 0;
+  let shakeSq = 0;
+  let shakeVsq = 0;
   let phase = "swing";
   let t = 0;
   let last = 0;
@@ -179,13 +185,52 @@ export function createStacker(canvas, app, onDone) {
     }
   }
 
-  function pileSpot(side, w) {
-    const base = stacked[0] || { x: W / 2 - 40, w: 80 };
-    const heap = rubble.filter((r) => r.side === side);
-    let hy = plinthTop(H) + 6;
-    for (const r of heap) hy -= Math.min(16, 7 + r.w * 0.08);
-    const x = side < 0 ? base.x - 12 - w : base.x + base.w + 12;
-    return { x, y: hy - BLOCK_H * 0.55, rot: side * (0.35 + Math.random() * 0.25) };
+  function resetShake() {
+    shakeX = 0;
+    shakeVx = 0;
+    shakeRot = 0;
+    shakeVrot = 0;
+    shakeSq = 0;
+    shakeVsq = 0;
+  }
+
+  function impulseTower(block, prev, chopped, perfect) {
+    const widthFeel = Math.min(1.35, block.w / 160);
+    let punch = 2.2 * widthFeel;
+    if (!prev) punch *= 1.4;
+    if (perfect) punch *= 0.5;
+    if (chopped > 4) punch *= 1.28;
+    const mid = block.x + block.w / 2;
+    const baseMid = prev ? prev.x + prev.w / 2 : mid;
+    const off = mid - baseMid;
+    const side = off !== 0 ? Math.sign(off) : chopped > 4 ? (block.x < W / 2 ? -1 : 1) : 0;
+    shakeVx += off * 0.35 + side * (chopped > 4 ? 22 : 6) * widthFeel;
+    shakeVrot += off * 0.0018 + side * (chopped > 4 ? 0.14 : 0.04);
+    shakeSq += Math.min(2, 0.7 * punch);
+    shakeVsq += 8 * punch;
+  }
+
+  function stepShake(dt) {
+    const k = 90;
+    const damp = 16;
+    shakeVx += (-k * shakeX - damp * shakeVx) * dt;
+    shakeX += shakeVx * dt;
+    shakeVrot += (-k * shakeRot - damp * shakeVrot) * dt;
+    shakeRot += shakeVrot * dt;
+    shakeVsq += (-k * shakeSq - damp * shakeVsq) * dt;
+    shakeSq += shakeVsq * dt;
+    if (Math.abs(shakeX) < 0.02 && Math.abs(shakeVx) < 0.2) {
+      shakeX = 0;
+      shakeVx = 0;
+    }
+    if (Math.abs(shakeRot) < 0.0004 && Math.abs(shakeVrot) < 0.004) {
+      shakeRot = 0;
+      shakeVrot = 0;
+    }
+    if (Math.abs(shakeSq) < 0.02 && Math.abs(shakeVsq) < 0.2) {
+      shakeSq = 0;
+      shakeVsq = 0;
+    }
   }
 
   function spawnSlice(src, x, w, u0, side, y) {
@@ -266,7 +311,9 @@ export function createStacker(canvas, app, onDone) {
       flash = perfect ? "Mixed floor. Still private." : "Buff brick. 0 for the list.";
       flashT = 0.9;
     }
-    playThud();
+    const landed = stacked[stacked.length - 1];
+    impulseTower(landed, prev, chopped, perfect);
+    playThud(prev ? {} : { heavy: true });
     if (chopped > 4) playSmash();
     if (chopped >= 6) applyWaste(chopped);
     if (stacked.length >= spec.floors) finish(true);
@@ -309,16 +356,7 @@ export function createStacker(canvas, app, onDone) {
       d.y += d.vy * dt;
       d.rot = (d.rot || 0) + (d.vr || 0) * dt;
       d.vx *= 0.992;
-      const dest = pileSpot(d.side || 1, d.w);
-      const floor = dest.y;
-      if (d.y >= floor) {
-        d.y = floor;
-        d.x = dest.x;
-        d.rot = dest.rot;
-        d.falling = false;
-        rubble.push(d);
-        debris.splice(i, 1);
-      }
+      if (d.y + cam > H + 80 || d.x < -80 || d.x > W + 80) debris.splice(i, 1);
     }
   }
 
@@ -343,7 +381,7 @@ export function createStacker(canvas, app, onDone) {
     ctx.fillText(`${Math.round(winShown)} social homes`, W / 2, H * 0.36 + 46);
     ctx.font = "600 15px Nunito, sans-serif";
     ctx.fillStyle = "#c5d6bc";
-    const mx = maxHomes || target;
+    const mx = maxHomes && target ? `${Math.round(winShown)} / ${mx}` : "Homes for the list";
     ctx.fillText(mx ? `${Math.round(winShown)} / ${mx}` : "Homes for the list", W / 2, H * 0.36 + 72);
     ctx.font = "600 13px Nunito, sans-serif";
     ctx.fillText("Tap to keep walking", W / 2, H * 0.36 + 98);
@@ -364,6 +402,7 @@ export function createStacker(canvas, app, onDone) {
     t += dt;
     if (flashT > 0) flashT -= dt;
     stepDebris(dt);
+    stepShake(dt);
     updateParticles(particles, dt);
     ctx.clearRect(0, 0, W, H);
 
@@ -375,11 +414,20 @@ export function createStacker(canvas, app, onDone) {
     ctx.translate(0, cam);
 
     drawPlinth(ctx, spec, W, plinthTop(H));
-    for (const r of rubble) drawDebris(ctx, r, spec);
     for (const d of debris) drawDebris(ctx, d, spec);
+    ctx.save();
+    if (stacked.length) {
+      const b0 = stacked[0];
+      const cx = b0.x + b0.w / 2;
+      const foot = plinthTop(H);
+      ctx.translate(cx + shakeX, foot + shakeSq);
+      ctx.rotate(shakeRot);
+      ctx.translate(-cx, -foot);
+    }
     for (let i = 0; i < stacked.length; i++) {
       drawStorey(ctx, stacked[i], stacked[i].y, spec, i === stacked.length - 1 && phase !== "drop");
     }
+    ctx.restore();
 
     if (phase === "drop" && drop) {
       if (!frozen) {
@@ -442,17 +490,19 @@ export function createStacker(canvas, app, onDone) {
     phase = "drop";
     drop.y = HOOK_Y + CABLE - cam;
     drop.vy = 50;
-    playRelease();
+    unlockAudio().then(() => playRelease());
   }
 
   function onPtr(ev) {
     ev.preventDefault();
+    unlockAudio();
     tryDrop();
   }
 
   function onKey(ev) {
     if (ev.code === "Space" || ev.key === " ") {
       ev.preventDefault();
+      unlockAudio();
       tryDrop();
     }
   }
@@ -461,9 +511,9 @@ export function createStacker(canvas, app, onDone) {
     stacked = [];
     social = 0;
     combo = 0;
-    rubble = [];
     debris = [];
     rubblePx = 0;
+    resetShake();
     const count = Math.max(0, Math.min(Number(n) || 0, spec.floors));
     const bw = baseWidth(spec, W);
     for (let i = 0; i < count; i++) {
@@ -528,8 +578,8 @@ export function createStacker(canvas, app, onDone) {
     rubblePx = 0;
     stacked = [];
     debris = [];
-    rubble = [];
     particles = [];
+    resetShake();
     phase = "swing";
     t = 0;
     cam = 0;
