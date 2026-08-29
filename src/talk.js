@@ -1,11 +1,5 @@
 /** Spoken lines before the stacker. Not a legal card. */
 
-function clip(s, n) {
-  const t = String(s || "").replace(/\s+/g, " ").trim();
-  if (t.length <= n) return t;
-  return t.slice(0, n - 1).replace(/\s+\S*$/, "") + "…";
-}
-
 export function parseStoreys(text) {
   const s = String(text || "");
   let best = 0;
@@ -179,7 +173,7 @@ export function factCopy(app) {
   const f = factsModel(app);
   const src = f.source;
   const wardHelps = !!(f.ward && f.site && !String(f.site).toLowerCase().includes(String(f.ward).toLowerCase().split(/\s+/)[0]));
-  const place = [f.borough, wardHelps ? f.ward : ""].filter(Boolean).join(" · ");
+  const place = [f.borough, wardHelps ? f.ward : ""].filter(Boolean).join(" \u00b7 ");
   const homes = [];
   if (f.units) homes.push(`They want ${f.units} homes.`);
   if (/refused/i.test(src)) {
@@ -200,7 +194,7 @@ export function factCopy(app) {
   } else if (f.affordablePct === 0 || f.socialHomes === 0) {
     homes.push("None of these are for people on the waiting list.");
   } else if (f.affordablePct >= 35) {
-    homes.push(`About ${f.socialHomes} of them would be social homes — that meets London's 35% ask on bigger schemes.`);
+    homes.push(`About ${f.socialHomes} of them would be social homes \u2014 that meets London's 35% ask on bigger schemes.`);
   } else if (f.units) {
     homes.push(`About ${f.socialHomes} of them would be social homes.`);
   }
@@ -246,7 +240,7 @@ export function shareOrigin() {
 
 export function shareUrl(app) {
   const id = encodeURIComponent(app?.id || app?.lpa_app_no || "");
-  return `${shareOrigin()}/?v=ob13&app=${id}&scene=stack`;
+  return `${shareOrigin()}/?v=ob14&app=${id}&scene=stack`;
 }
 
 export function civicHandles(civic, slug) {
@@ -278,26 +272,26 @@ export function sharePayload(app, civic) {
     const nums = n
       ? `${n} homes. We could not find a social-housing figure on the public record.`
       : "We could not find a social-housing figure on the public record.";
-    stance = `I played Our Block on ${site}, ${borough}. ${nums} London asks 35% on bigger schemes. I'd be grateful if you would look at the social-housing impact — does this do enough for people on the waiting list? You can try this application here: ${url}`;
+    stance = `I played Our Block on ${site}, ${borough}. ${nums} London asks 35% on bigger schemes. I'd be grateful if you would look at the social-housing impact \u2014 does this do enough for people on the waiting list? You can try this application here: ${url}`;
   } else if (civicWin) {
     const nums = n
-      ? `About ${x} of ${n} homes would be social (${y}%) — that meets London's 35% ask.`
+      ? `About ${x} of ${n} homes would be social (${y}%) \u2014 that meets London's 35% ask.`
       : `This one meets London's 35% ask (${y}%).`;
     stance = `I played Our Block on ${site}, ${borough}. ${nums} A good plan for the list. Thank you for a plan with real social homes. You can try this application here: ${url}`;
   } else if (y === 0 || x === 0) {
     const nums = n
       ? `${n} homes, none for the waiting list (0% affordable).`
       : `None of these homes are for the waiting list (0% affordable).`;
-    stance = `I played Our Block on ${site}, ${borough}. ${nums} London asks 35% on bigger schemes. I'd be grateful if you would look at the social-housing impact — does this do enough for people on the waiting list? You can try this application here: ${url}`;
+    stance = `I played Our Block on ${site}, ${borough}. ${nums} London asks 35% on bigger schemes. I'd be grateful if you would look at the social-housing impact \u2014 does this do enough for people on the waiting list? You can try this application here: ${url}`;
   } else {
     const nums = n
       ? `About ${x} of ${n} homes would be social (${y}%).`
       : `This one is ${y}% affordable.`;
-    stance = `I played Our Block on ${site}, ${borough}. ${nums} London asks 35% on bigger schemes. I'd be grateful if you would look at the social-housing impact — does this do enough for people on the waiting list? You can try this application here: ${url}`;
+    stance = `I played Our Block on ${site}, ${borough}. ${nums} London asks 35% on bigger schemes. I'd be grateful if you would look at the social-housing impact \u2014 does this do enough for people on the waiting list? You can try this application here: ${url}`;
   }
   const text = [stance, tags].filter(Boolean).join("\n");
   return {
-    title: `Our Block — ${site}`,
+    title: `Our Block \u2014 ${site}`,
     text,
     url,
   };
@@ -308,7 +302,7 @@ export function civicLoseLine() {
 }
 
 export function civicFailRetryLine() {
-  return "Have another go — this one actually has homes for the list.";
+  return "Have another go \u2014 this one actually has homes for the list.";
 }
 
 export function civicWinLine() {
@@ -320,7 +314,7 @@ export function talkLines(app) {
   const spec = challengeSpec(app);
   const src = sourceOf(app);
   const lines = [];
-  const ask = clip(g.plainAsk || app?.site_name || "They want to build here.", 140);
+  const ask = String(g.plainAsk || app?.site_name || "They want to build here.").replace(/\s+/g, " ").trim();
   lines.push(ask);
 
   const unknown = spec.unknown || spec.aff == null;
@@ -338,7 +332,7 @@ export function talkLines(app) {
     } else {
       lines.push("We could not find a social-housing figure on the public record. The application doesn't say.");
     }
-    const who = clip(g.plainImpact, 130);
+    const who = String(g.plainImpact || "").replace(/\s+/g, " ").trim();
     lines.push(who || "Have a look at the card, then we'll stack it.");
     lines.push("Have a look, then let's get it stacked.");
   } else if (low) {
@@ -349,14 +343,14 @@ export function talkLines(app) {
     } else {
       lines.push(`This one is ${pct}% affordable. London asks 35% on bigger schemes.`);
     }
-    const who = clip(g.plainImpact, 130);
+    const who = String(g.plainImpact || "").replace(/\s+/g, " ").trim();
     lines.push(who || "That leaves people waiting for a social home out of this one.");
     lines.push("Have a look, then let's get it stacked.");
   } else if (spec.aff >= 0.35) {
     const socialBit =
       g.socialRentUnits != null
-        ? `About ${g.socialRentUnits} of them would be social-rent homes — that meets London's 35% ask.`
-        : `About ${spec.socialHomes} of them would be social homes — that meets London's 35% ask.`;
+        ? `About ${g.socialRentUnits} of them would be social-rent homes \u2014 that meets London's 35% ask.`
+        : `About ${spec.socialHomes} of them would be social homes \u2014 that meets London's 35% ask.`;
     lines.push(spec.units ? `They want ${spec.units} homes. ${socialBit}` : "This one meets London's 35% ask for affordable homes.");
     lines.push("Those are the homes that help people on the list.");
     lines.push("Right. Let's get it stacked.");
@@ -366,7 +360,7 @@ export function talkLines(app) {
         ? `About ${g.socialRentUnits} of them would be social-rent homes. London asks 35%.`
         : `About ${spec.socialHomes} of them would be social homes. London asks 35%.`;
     lines.push(spec.units ? `They want ${spec.units} homes. ${socialBit}` : `This one is ${pct}% affordable. London asks 35%.`);
-    lines.push(clip(g.plainImpact, 130) || "There's a gap versus the 35% London asks for.");
+    lines.push(String(g.plainImpact || "").replace(/\s+/g, " ").trim() || "There's a gap versus the 35% London asks for.");
     lines.push("Have a look, then let's get it stacked.");
   }
 
