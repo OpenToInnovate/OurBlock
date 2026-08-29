@@ -69,38 +69,6 @@ function loadScript(src, timeoutMs = 8000) {
   });
 }
 
-function footprintOf(app) {
-  const poly = app?.wgs84_polygon;
-  if (poly?.type === "Polygon" && poly.coordinates?.[0]?.length >= 4) return poly.coordinates;
-  if (poly?.type === "MultiPolygon" && poly.coordinates?.[0]?.[0]?.length >= 4) return poly.coordinates[0];
-  const lon = app?.centroid?.lon;
-  const lat = app?.centroid?.lat;
-  if (lon == null || lat == null) return null;
-  const units = app.game?.units || 12;
-  const side = Math.max(18, Math.min(80, Math.sqrt(units * 28)));
-  const dLat = side / 2 / 111320;
-  const dLon = side / 2 / (111320 * Math.cos((lat * Math.PI) / 180));
-  return [
-    [
-      [lon - dLon, lat - dLat],
-      [lon + dLon, lat - dLat],
-      [lon + dLon, lat + dLat],
-      [lon - dLon, lat + dLat],
-      [lon - dLon, lat - dLat],
-    ],
-  ];
-}
-
-function massingStats(app, decision, deal) {
-  const units = Math.max(1, app.game?.units || 1);
-  const storeysRaw = Math.max(2, Math.ceil(units / 4));
-  const storeysVis = Math.min(storeysRaw, 72);
-  let height = storeysVis * 3.2;
-  if (decision === "negotiate") height *= 0.62;
-  if (deal?.kind === "smaller") height *= 0.7;
-  return { units, storeysRaw, storeysVis, height };
-}
-
 function firstLabelLayerId(map) {
   const layers = map.getStyle()?.layers || [];
   for (const layer of layers) {
@@ -123,7 +91,6 @@ function firstPlaceLabelId(map) {
 const GROUND_LINE = /highway|road_|railway|aeroway|path|pier|waterway|boundary/;
 const KEEP_ABOVE = /^(3d-buildings|massing-extrude|refuse-ring|crowd|dust|ta-pressure|apps-dots|hospitals-dots)$/;
 
-/** Roads/rails/paths must sit under fill-extrusions or they paint on facades. */
 function tuckGroundUnderBuildings(map) {
   if (!map.getLayer("3d-buildings")) return;
   const layers = map.getStyle()?.layers || [];
@@ -158,31 +125,14 @@ function appsFeatureCollection(list) {
   };
 }
 
-function emptyFc() {
-  return { type: "FeatureCollection", features: [] };
-}
-
 const VOXEL_PALETTE = [
-  "#C6A15B",
-  "#8B8B8B",
-  "#C45C32",
-  "#E3C78A",
-  "#E8E8E8",
-  "#6B5335",
-  "#4F7F7A",
-  "#B4846C",
+  "#C6A15B", "#8B8B8B", "#C45C32", "#E3C78A",
+  "#E8E8E8", "#6B5335", "#4F7F7A", "#B4846C",
 ];
 
 function voxelColorExpr() {
   const n = VOXEL_PALETTE.length;
-  const hash = [
-    "%",
-    ["abs", ["+",
-      ["to-number", ["coalesce", ["id"], 0]],
-      ["*", ["to-number", ["coalesce", ["get", "render_height"], ["get", "height"], 0]], 7],
-    ]],
-    n,
-  ];
+  const hash = ["%", ["abs", ["+", ["to-number", ["coalesce", ["id"], 0]], ["*", ["to-number", ["coalesce", ["get", "render_height"], ["get", "height"], 0]], 7]]], n];
   const expr = ["match", hash];
   for (let i = 0; i < n; i++) expr.push(i, VOXEL_PALETTE[i]);
   expr.push(VOXEL_PALETTE[0]);
@@ -200,9 +150,7 @@ function voxelBaseExpr() {
 }
 
 const LOD_Z = 15;
-
 const STOCK_BUILDING_FILL = "#d4d1ca";
-
 const GM_LAND = "#efece6";
 const GM_PARK = "#c6d9b5";
 const GM_WOOD = "#b4c9a0";
@@ -367,29 +315,292 @@ function add3dBuildings(map, satellite) {
   tuckGroundUnderBuildings(map);
 }
 
-function thickenRoads(map) {
-  for (const id of ["highway_major_casing", "highway_motorway_casing", "highway_minor"]) {
-    if (!map.getLayer(id)) continue;
-    try {
-      const cur = map.getPaintProperty(id, "line-width");
-      if (typeof cur === "number") map.setPaintProperty(id, "line-width", cur * 1.55);
-      else map.setPaintProperty(id, "line-width", ["*", 1.45, ["coalesce", cur, 1.2]]);
-    } catch (_) {}
-  }
-}
+export function createGlobe(container, data, opts = {}) {
+  const wrap = opts.wrap || container?.parentElement;
+  const onStatus = opts.onStatus || (() => {});
+  let map = null;
+  let marker = null;
+  let ready = false;
+  let failed = false;
+  let mode = "2d";
+  let tilesOk = false;
+  let imageryOk = false;
+  let lastApp = null;
+  let styleReady = false;
+  let lodPitched3d = null;
+  let lodTimer = 0;
+  const layers = { apps: true };
 
-function punchLandForSatellite(map) {
-  const fade = {
-    background: ["background-opacity", 0.18],
-    landuse_residential: ["fill-opacity", 0.08],
-    landcover_wood: ["fill-opacity", 0.1],
-    landuse_park: ["fill-opacity", 0.1],
-    water: ["fill-opacity", 0.28],
-  };
-  for (const [id, [prop, val]] of Object.entries(fade)) {
-    if (!map.getLayer(id)) continue;
-    try {
-      map.setPaintProperty(id, prop, val);
-    } catch (_) {}
+  function computePitched3d() {
+    if (mode !== "3d") return false;
+    if (wrap && wrap.classList.contains("is-2d")) return false;
+    if (!map) return false;
+    return map.getPitch() > 0.5;
   }
+
+  function applyLod() {
+    if (!map || !styleReady) return;
+    const pitched3d = computePitched3d();
+    if (pitched3d === lodPitched3d) return;
+    lodPitched3d = pitched3d;
+    if (map.getLayer("3d-buildings")) {
+      try { map.setLayoutProperty("3d-buildings", "visibility", pitched3d ? "visible" : "none"); } catch (_) {}
+    }
+    if (map.getLayer("building")) {
+      try { map.setLayoutProperty("building", "visibility", "visible"); } catch (_) {}
+      try { map.setLayerZoomRange("building", 0, pitched3d ? LOD_Z : 24); } catch (_) {}
+    }
+  }
+
+  function scheduleLod() {
+    clearTimeout(lodTimer);
+    lodTimer = setTimeout(applyLod, 140);
+  }
+
+  function ensureSources() {
+    if (!map.getSource("apps-dots")) {
+      map.addSource("apps-dots", { type: "geojson", data: appsFeatureCollection(data.applications) });
+      map.addLayer({
+        id: "apps-dots",
+        type: "circle",
+        source: "apps-dots",
+        paint: {
+          "circle-radius": ["interpolate", ["linear"], ["zoom"], 9, 5.2, 12, 7.4, 16, 11],
+          "circle-color": [
+            "case",
+            [">=", ["get", "aff"], 0.35], "#4CAF50",
+            ["get", "luxury"], "#8a6a14",
+            "#2e8b6b",
+          ],
+          "circle-opacity": 0.92,
+          "circle-stroke-width": 2,
+          "circle-stroke-color": "#f4ffe8",
+        },
+        layout: { visibility: layers.apps ? "visible" : "none" },
+      });
+    }
+  }
+
+  async function addImagery() {
+    imageryOk = false;
+    paintLegoGround(map);
+    add3dBuildings(map, imageryOk);
+    try {
+      const { attachLandmarks } = await import("./landmarks.js?v=ob2");
+      await attachLandmarks(map, window.maplibregl);
+    } catch (_) {}
+    tuckGroundUnderBuildings(map);
+  }
+
+  function flyToLngLat(lng, lat, fly = {}) {
+    if (!map || !ready || lng == null || lat == null) return;
+    const dur = reducedMotion() ? 0 : fly.duration ?? 1400;
+    map.flyTo({
+      center: [lng, lat],
+      zoom: fly.zoom ?? 16.5,
+      pitch: fly.pitch ?? 55,
+      bearing: fly.bearing ?? -18,
+      duration: dur,
+      essential: true,
+    });
+  }
+
+  function bindChallenges() {
+    if (!map || map._cbBound) return;
+    map._cbBound = true;
+    const fire = (e) => {
+      const id = e.features?.[0]?.properties?.id;
+      if (id && typeof opts.onChallenge === "function") opts.onChallenge(id);
+    };
+    map.on("click", "apps-dots", fire);
+    map.on("mouseenter", "apps-dots", () => { map.getCanvas().style.cursor = "pointer"; });
+    map.on("mouseleave", "apps-dots", () => { map.getCanvas().style.cursor = ""; });
+  }
+
+  function pulseMarker(app) {
+    if (!map || !ready || !window.maplibregl) return;
+    const lon = app?.centroid?.lon;
+    const lat = app?.centroid?.lat;
+    if (lon == null || lat == null) return;
+    if (marker) marker.remove();
+    const el = document.createElement("div");
+    el.className = "site-marker";
+    el.setAttribute("aria-hidden", "true");
+    marker = new window.maplibregl.Marker({ element: el, anchor: "center" }).setLngLat([lon, lat]).addTo(map);
+  }
+
+  function flyToApp(app) {
+    if (!map || !ready || mode !== "3d" || !app?.centroid) return;
+    lastApp = app;
+    const dur = reducedMotion() ? 0 : 1600;
+    map.flyTo({
+      center: [app.centroid.lon, app.centroid.lat],
+      zoom: 16.8,
+      pitch: 60,
+      bearing: -18,
+      duration: dur,
+      essential: true,
+    });
+    pulseMarker(app);
+  }
+
+  function flyToStreet(app, fly = {}) {
+    if (!map || !ready || !app?.centroid) return;
+    lastApp = app;
+    const cam = {
+      center: [app.centroid.lon, app.centroid.lat - (fly.latNudge ?? 0.00032)],
+      zoom: fly.zoom ?? 17.7,
+      pitch: fly.pitch ?? 58,
+      bearing: fly.bearing ?? -28,
+      essential: true,
+    };
+    if (fly.jump || reducedMotion()) map.jumpTo(cam);
+    else map.easeTo({ ...cam, duration: fly.duration ?? 800 });
+    pulseMarker(app);
+    try { map.resize(); } catch (_) {}
+    scheduleLod();
+    map.once("idle", () => {
+      try { map.resize(); } catch (_) {}
+      scheduleLod();
+    });
+  }
+
+  function overview() {
+    if (!map || !ready) return;
+    const dur = reducedMotion() ? 0 : 900;
+    map.easeTo({ ...TH_OVERVIEW, duration: dur, essential: true });
+  }
+
+  function setMode(next) {
+    mode = next;
+    if (wrap) {
+      wrap.classList.toggle("is-3d", mode === "3d");
+      wrap.classList.toggle("is-2d", mode === "2d");
+    }
+    if (mode === "3d" && map) {
+      requestAnimationFrame(() => { try { map.resize(); } catch (_) {} });
+    }
+    applyLod();
+  }
+
+  function resize() {
+    if (map && mode === "3d") {
+      try { map.resize(); } catch (_) {}
+    }
+  }
+
+  function fallback(reason) {
+    try { window.__pdGlobeFail = String(reason || "fallback"); } catch (_) {}
+    failed = true;
+    ready = false;
+    mode = "2d";
+    if (wrap) {
+      wrap.classList.add("is-2d");
+      wrap.classList.remove("is-3d");
+    }
+    onStatus({ ok: false, reason: reason || "fallback", imagery: false });
+  }
+
+  async function start() {
+    if (failed) return false;
+    if (!container) { fallback("no container"); return false; }
+    if (!webglOk()) { fallback("no webgl"); return false; }
+    if (wrap) {
+      wrap.classList.add("is-3d");
+      wrap.classList.remove("is-2d");
+    }
+    ensureCss();
+    let maplibregl;
+    try { maplibregl = await loadScript(MAPLIBRE_JS); }
+    catch (err) { fallback(String(err?.message || err)); return false; }
+    if (!maplibregl) { fallback("maplibre missing"); return false; }
+    try {
+      map = new maplibregl.Map({
+        container,
+        style: STYLE_URL,
+        center: TH_OVERVIEW.center,
+        zoom: TH_OVERVIEW.zoom,
+        pitch: TH_OVERVIEW.pitch,
+        bearing: TH_OVERVIEW.bearing,
+        maxPitch: DESK_MAX_PITCH,
+        minZoom: 9,
+        maxZoom: 18.5,
+        antialias: true,
+        attributionControl: true,
+        dragRotate: true,
+        touchPitch: true,
+        touchZoomRotate: true,
+        cooperativeGestures: false,
+        pitchWithRotate: true,
+        canvasContextAttributes: { antialias: true },
+        fadeDuration: reducedMotion() ? 0 : 300,
+      });
+    } catch (err) {
+      fallback(String(err?.message || err));
+      return false;
+    }
+    map.addControl(new maplibregl.NavigationControl({ visualizePitch: true, showCompass: true }), "top-left");
+    map.on("webglcontextlost", () => fallback("webglcontextlost"));
+    const loaded = await new Promise((resolve) => {
+      let settled = false;
+      const done = (ok) => { if (settled) return; settled = true; resolve(ok); };
+      const bootTimeout = setTimeout(() => {
+        if (!ready) { fallback("style timeout"); done(false); }
+      }, 20000);
+      map.once("load", async () => {
+        clearTimeout(bootTimeout);
+        try {
+          await addImagery();
+          ensureSources();
+          bindChallenges();
+          tuckGroundUnderBuildings(map);
+          ready = true;
+          tilesOk = true;
+          mode = "3d";
+          if (wrap) {
+            wrap.classList.add("is-3d");
+            wrap.classList.remove("is-2d");
+          }
+          styleReady = true;
+          applyLod();
+          map.on("pitchend", scheduleLod);
+          try { window.__pdMap = map; } catch (_) {}
+          onStatus({ ok: true, tiles: true, style: STYLE_URL, imagery: imageryOk });
+          done(true);
+        } catch (err) {
+          fallback(String(err?.message || err));
+          done(false);
+        }
+      });
+    });
+    return loaded && ready && !failed;
+  }
+
+  function setApplications(list) {
+    data.applications = list || [];
+    if (!map || !ready) return;
+    const src = map.getSource("apps-dots");
+    if (src) src.setData(appsFeatureCollection(data.applications));
+  }
+
+  return {
+    start,
+    flyToApp,
+    flyToStreet,
+    flyToLngLat,
+    overview,
+    setMode,
+    resize,
+    setApplications,
+    isReady: () => ready && !failed,
+    getCamera: () => {
+      if (!map || !ready) return null;
+      const c = map.getCenter();
+      return { lng: c.lng, lat: c.lat, pitch: map.getPitch(), zoom: map.getZoom(), bearing: map.getBearing() };
+    },
+    getMode: () => mode,
+    tilesLoaded: () => tilesOk,
+    imageryLoaded: () => imageryOk,
+    failed: () => failed,
+  };
 }
