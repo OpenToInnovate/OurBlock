@@ -168,7 +168,7 @@ export function shareOrigin() {
 
 export function shareUrl(app) {
   const id = encodeURIComponent(app?.id || app?.lpa_app_no || "");
-  return `${shareOrigin()}/?v=ob10&app=${id}&scene=stack`;
+  return `${shareOrigin()}/?v=ob11&app=${id}&scene=stack`;
 }
 
 export function civicHandles(civic, slug) {
@@ -187,21 +187,33 @@ export function civicHandles(civic, slug) {
 export function sharePayload(app, civic) {
   const f = factsModel(app);
   const copy = factCopy(app);
-  const spec = challengeSpec(app);
   const url = shareUrl(app);
-  const site = f.site || "This site";
+  const site = String(f.site || "this site").split(",")[0].trim() || "this site";
   const borough = f.borough || "London";
-  const homes = copy.homes.join(" ") || (spec.units ? `They want ${spec.units} homes.` : "Homes not stated on the pack");
-  const impact = clip(f.plainImpact, 180);
   const tags = civicHandles(civic, f.slug).join(" ");
-  const text = [
-    `Our Block: ${site}, ${borough}`,
-    homes,
-    copy.london,
-    impact,
-    url,
-    tags,
-  ].filter(Boolean).join("\n");
+  const n = copy.units;
+  const x = copy.socialHomes;
+  const y = copy.affordablePct;
+  // Stance follows the APPLICATION civic outcome, not the player's stack skill.
+  const civicWin = !!(copy.ok || y >= 35);
+  let stance;
+  if (civicWin) {
+    const nums = n
+      ? `About ${x} of ${n} homes would be social (${y}%) — that meets London's 35% ask.`
+      : `This one meets London's 35% ask (${y}%).`;
+    stance = `I played Our Block on ${site}, ${borough}. ${nums} A good plan for the list. Thank you for a plan with real social homes. You can try this application here: ${url}`;
+  } else if (y === 0 || x === 0) {
+    const nums = n
+      ? `${n} homes, none for the waiting list (0% affordable).`
+      : `None of these homes are for the waiting list (0% affordable).`;
+    stance = `I played Our Block on ${site}, ${borough}. ${nums} London asks 35% on bigger schemes. I'd be grateful if you would look at the social-housing impact — does this do enough for people on the waiting list? You can try this application here: ${url}`;
+  } else {
+    const nums = n
+      ? `About ${x} of ${n} homes would be social (${y}%).`
+      : `This one is ${y}% affordable.`;
+    stance = `I played Our Block on ${site}, ${borough}. ${nums} London asks 35% on bigger schemes. I'd be grateful if you would look at the social-housing impact — does this do enough for people on the waiting list? You can try this application here: ${url}`;
+  }
+  const text = [stance, tags].filter(Boolean).join("\n");
   return {
     title: `Our Block — ${site}`,
     text,
