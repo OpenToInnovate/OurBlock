@@ -133,11 +133,7 @@ function parseAffordable(desc, units) {
     const a = parseInt(n[1], 10);
     if (a <= units) return { affordablePct: a / units, affordableSource: "count" };
   }
-  if (/affordable/i.test(t) && units && units >= 10) {
-    return { affordablePct: 0.35, affordableSource: "mentioned-london-plan-default" };
-  }
-  if (units && units >= 10) return { affordablePct: 0.2, affordableSource: "major-unspecified-20" };
-  return { affordablePct: 0, affordableSource: "minor-or-none" };
+  return { affordablePct: null, affordableSource: "not-stated" };
 }
 
 function isLuxury(app, units) {
@@ -274,7 +270,7 @@ for (const a of playable.slice(0, 18)) {
   ].filter(Boolean).join(",");
   console.log(
     a.game.units,
-    Math.round(a.game.affordablePct * 100) + "%",
+    a.game.affordablePct == null ? "n/s" : Math.round(a.game.affordablePct * 100) + "%",
     a.valid_date,
     a.ward,
     a.lpa_app_no,
