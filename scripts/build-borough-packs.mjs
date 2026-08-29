@@ -450,3 +450,188 @@ const targets = boroughsDoc.boroughs.filter((b) => {
 
 const summary = [];
 fs.mkdirSync(path.join(ROOT, "data", "packs"), { recursive: true });
+
+for (const b of targets) {
+  const row = { slug: b.slug, name: b.name, lad: b.lad, n: 0, bytes: 0, error: null };
+  try {
+    const piprRow = piprDoc.latestByLad[b.lad];
+    const affRow = affDoc.byLad[b.lad];
+    if (!piprRow?.oneBed || !piprRow?.threeBed) {
+      row.error = "no PIPR";
+      summary.push(row);
+      console.log("skip", b.name, "no PIPR");
+      continue;
+    }
+    if (affRow?.completions == null) {
+      row.error = "no affordable completions";
+      summary.push(row);
+      console.log("skip", b.name, "no completions");
+      continue;
+    }
+    console.log("PLD", b.name);
+    const { total, apps } = await fetchApps(b.name);
+    row.pldTotal = total;
+    row.pldApps = apps.length;
+    const playable = [];
+    for (const app of apps) {
+      const parsed = parseUnits(app.description);
+      const aff = parseAffordable(app.description, parsed.units);
+      const luxury = isLuxury(app, parsed.units);
+      if (!isPlayable(app, parsed)) continue;
+      app.game = {
+        units: parsed.units,
+        unitsSource: parsed.unitsSource,
+        affordablePct: aff.affordablePct,
+        affordableSource: aff.affordableSource,
+        luxury,
+        playable: true,
+        constraints: emptyConstraints(),
+      };
+      playable.push(app);
+    }
+    const deck = pickEight(playable);
+    row.playable = playable.length;
+    row.n = deck.length;
+    const schools = deck.length ? await schoolsNear(deck) : [];
+    await sleep(200);
+    for (const app of deck) {
+      const hosp = nearestHospital(app.centroid.lat, app.centroid.lon, hospitals);
+      const band = hospBand(hosp?.m);
+      let crime = { crimeCount: null, crimeLocs: null, crimeMonth: CRIME_MONTH, highCrime: false };
+      try {
+        crime = await crimeAt(app.centroid.lat, app.centroid.lon);
+      } catch (_) {}
+      await sleep(120);
+      const sch = nearestSchool(app.centroid.lat, app.centroid.lon, schools);
+      const place = {
+        schoolHalo: !!(sch && sch.m <= 400),
+        schoolName: sch?.name || null,
+        schoolM: sch?.m ?? null,
+        hospitalName: hosp?.name || null,
+        hospitalM: hosp?.m ?? null,
+        ...band,
+        ...crime,
+      };
+      app.game.place = place;
+      app.game.plainAsk = plainAsk(app, app.game.units);
+      app.game.plainImpact = plainImpact(app, app.game.units, app.game.affordablePct, place, affRow.completions);
+      app.game.plainWho = plainWho(app, app.game.units, app.game.affordablePct, app.game.luxury);
+      delete app.development_type;
+      delete app.valid_date;
+    }
+    const ukhpi = await fetchUkhpi(b.slug);
+    if (!ukhpi?.averagePrice) {
+      row.error = "no UKHPI";
+      summary.push(row);
+      console.log("skip", b.name, "no UKHPI");
+      continue;
+    }
+    const inner = INNER.has(b.name);
+    const nearestHospitals = [];
+    const seenH = new Set();
+    for (const app of deck) {
+      const n = app.game.place?.hospitalName;
+      if (!n || seenH.has(n)) continue;
+      seenH.add(n);
+      const h = hospitals.find((x) => x.name === n);
+      if (h) nearestHospitals.push({ name: h.name, lat: h.lat, lng: h.lng });
+    }
+    const pack = {
+      slug: b.slug,
+      name: b.name,
+      lad: b.lad,
+      snapshotDate: SNAPSHOT,
+      note: deck.length < 8
+        ? `${deck.length} playable residential applications in this PLD snapshot — not padded to 8.`
+        : undefined,
+      applications: deck,
+      hospitals: nearestHospitals,
+      schools: [],
+      baseline: {
+        snapshotDate: SNAPSHOT,
+        borough: b.name,
+        gss: b.lad,
+        ukhpi,
+        pipr: {
+          month: piprRow.month,
+          averageRent: piprRow.averageRent,
+          annualChangePct: piprRow.annualChangePct != null ? Math.round(piprRow.annualChangePct * 100) / 100 : null,
+          monthlyChangePct: piprRow.monthlyChangePct != null ? Math.round(piprRow.monthlyChangePct * 100) / 100 : null,
+          oneBed: piprRow.oneBed,
+          twoBed: piprRow.twoBed,
+          threeBed: piprRow.threeBed,
+          fourPlus: piprRow.fourPlus,
+          flatMaisonette: piprRow.flatMaisonette,
+          sourceWorkbook: "ONS Price Index of Private Rents UK monthly price statistics, 19 August 2026",
+          bulletin: piprDoc.bulletin,
+          localPage: `https://www.ons.gov.uk/visualisations/housingpriceslocal/${b.lad}/`,
+          licence: "OGL v3.0",
+        },
+        affordableHousingSupply: {
+          year: affRow.year,
+          completions: affRow.completions,
+          code: b.lad,
+          source: affDoc.source,
+          licence: "OGL v3.0",
+          note: "Win condition uses this completions pace, not the London Plan 35% policy target.",
+        },
+        nursePay: {
+          ...thBase.nursePay,
+          area: inner ? "Inner London" : "Outer London",
+          note: inner
+            ? thBase.nursePay.hcas
+            : "Outer London HCAS is lower than Inner. Take-home still uses the Inner Band 5 entry figure until we re-derive Outer 2026/27 — not an invented Outer salary.",
+        },
+        takeHomeAssumptions: thBase.takeHomeAssumptions,
+        residents: thBase.residents,
+        thresholds: thBase.thresholds,
+        londonPlanAffordableTargetPct: 0.35,
+        win: {
+          affordableCompletions: affRow.completions,
+          quarters: 8,
+          loseSupport: 0,
+          losePricedOutResidents: 2,
+        },
+      },
+      stakes: {
+        snapshotDate: SNAPSHOT,
+        snapshotNote: "Official snapshot, not live. TA not in this pack unless extracted per borough — do not use Tower Hamlets 3,096 here.",
+        borough: b.name,
+        gss: b.lad,
+      },
+      crimeNote: "Street-crime counts are precomputed per application from data.police.uk May 2026. No point cloud shipped.",
+    };
+    if (!pack.note) delete pack.note;
+    const out = path.join(ROOT, "data", "packs", `${b.slug}.json`);
+    const json = JSON.stringify(pack);
+    fs.writeFileSync(out, json);
+    row.bytes = json.length;
+    console.log("wrote", b.slug, "n=", deck.length, "bytes", row.bytes);
+    await sleep(250);
+  } catch (err) {
+    row.error = String(err?.message || err);
+    console.error("fail", b.name, row.error);
+    await sleep(800);
+  }
+  summary.push(row);
+}
+
+const index = JSON.parse(fs.readFileSync(path.join(ROOT, "data", "boroughs.json"), "utf8"));
+const playableSlugs = new Set(
+  fs.readdirSync(path.join(ROOT, "data", "packs"))
+    .filter((f) => f.endsWith(".json"))
+    .map((f) => f.replace(/\.json$/, ""))
+);
+for (const b of index.boroughs) {
+  const packPath = path.join(ROOT, "data", "packs", `${b.slug}.json`);
+  if (!fs.existsSync(packPath)) {
+    b.playable = false;
+    continue;
+  }
+  const pack = JSON.parse(fs.readFileSync(packPath, "utf8"));
+  b.playable = Array.isArray(pack.applications) && pack.applications.length > 0;
+}
+index.note = "Greater London local authorities (ONS LAD). playable means a slim 8-stamp pack exists at data/packs/{slug}.json and is loaded on borough switch. City of London has no ONS PIPR row so it stays camera-only. Packs are snapshots, not live.";
+fs.writeFileSync(path.join(ROOT, "data", "boroughs.json"), JSON.stringify(index, null, 2));
+fs.writeFileSync(path.join(ROOT, "data", "pack-build-summary.json"), JSON.stringify({ snapshotDate: SNAPSHOT, summary }, null, 2));
+console.log("done", summary.map((s) => `${s.slug}:${s.n}${s.error ? "!" + s.error : ""}`).join(" "));
